@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import TitlebarWrapper from "@/components/TitlebarWrapper"; // Wrapper handles client-side only import
 
 const inter = Inter({
   subsets: ["latin"],
@@ -18,13 +19,17 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Adding comment to force recompile
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${inter.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
-        {children}
+        <div className="app-window">
+          <TitlebarWrapper />
+          {children}
+        </div>
       </body>
     </html>
   );

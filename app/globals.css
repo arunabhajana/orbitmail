@@ -39,18 +39,92 @@
 }
 
 body {
-  /* @apply bg-background text-foreground; <-- Removed because theme vars are gone */
+  margin: 0;
+  height: 100%;
+  background: transparent;
   font-feature-settings: "rlig" 1, "calt" 1;
-  /* Exact gradient from reference */
-  background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
-  background-attachment: fixed;
-  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  color: #101722;
-  /* Default text color from reference */
+}
+
+.app-window {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #c9b6ff, #8fb3ff);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure buttons in titlebar are clickable if we add any */
+.titlebar button {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.15);
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+
+  z-index: 100;
+  -webkit-app-region: drag;
+}
+
+.brand {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+
+  font-family:
+    "Inter",
+    "SF Pro Display",
+    system-ui,
+    sans-serif;
+
+  color: rgba(20, 20, 20, 0.85);
+}
+
+.win-btn {
+  width: 34px;
+  height: 28px;
+
+  border-radius: 8px;
+  border: none;
+
+  background: transparent;
+  cursor: pointer;
+
+  font-size: 14px;
+
+  -webkit-app-region: no-drag;
+  transition: background 0.15s ease;
+}
+
+.win-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.win-btn.close:hover {
+  background: #ff5f57;
+  color: white;
+}
+
+.app-window>*:not(.titlebar) {
+  padding-top: 48px;
 }
 
 /* Define basic colors for Lucide icons and text since we removed the complex theme */

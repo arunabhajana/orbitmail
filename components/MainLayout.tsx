@@ -11,7 +11,7 @@ export default function MainLayout() {
 
     return (
         /* Main Dashboard Container - Exact match to HTML structure */
-        <div className="flex h-[800px] w-full max-w-7xl mac-shadow rounded-xl overflow-hidden border border-white/30 bg-white/20">
+        <div className="flex h-[calc(100vh-96px)] max-h-[900px] w-full max-w-7xl mac-shadow rounded-xl overflow-hidden border border-white/30 bg-white/20">
             {/* Column 1: Sidebar */}
             <Sidebar className="w-64 flex flex-col shrink-0" />
 
