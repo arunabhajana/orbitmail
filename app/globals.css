@@ -1,26 +1,71 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@layer utilities {
+  .glass-sidebar {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+  }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  .glass-list {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  .mac-shadow {
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Custom Scrollbar to match clean aesthetic */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+  }
+
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* @apply bg-background text-foreground; <-- Removed because theme vars are gone */
+  font-feature-settings: "rlig" 1, "calt" 1;
+  /* Exact gradient from reference */
+  background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  color: #101722;
+  /* Default text color from reference */
 }
+
+/* Define basic colors for Lucide icons and text since we removed the complex theme */
+@theme {
+  --color-primary: #277bf1;
+  --color-primary-foreground: #ffffff;
+  --color-background: #f6f7f8;
+  --color-foreground: #101722;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-border: #e2e8f0;
+
+  /* Font config */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: var(--font-inter), "Inter", sans-serif;
+}
+
+/* Removed :root block as we are using @theme now */
