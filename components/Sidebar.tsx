@@ -19,6 +19,7 @@ import Link from "next/link"; // Import Link for navigation
 
 interface SidebarProps {
     className?: string;
+    onCompose: () => void;
 }
 
 interface NavItemConfig {
@@ -153,7 +154,7 @@ TagItem.displayName = "TagItem";
 
 // --- Main Component ---
 
-const Sidebar: React.FC<SidebarProps> = ({ className }) => {
+const Sidebar: React.FC<SidebarProps> = ({ className, onCompose }) => {
     return (
         <aside
             className={cn(
@@ -190,6 +191,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             {/* 4. Compose Button */}
             <div className="p-4">
                 <button
+                    onClick={onCompose}
                     className="w-full flex items-center justify-center gap-2 bg-primary text-white py-2.5 rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all font-medium text-sm"
                 >
                     <Pencil className="w-[18px] h-[18px]" />

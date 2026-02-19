@@ -6,8 +6,12 @@ import EmailList from '@/components/EmailList';
 import EmailDetail from '@/components/EmailDetail';
 import { MOCK_EMAILS } from '@/lib/data';
 
+import { AnimatePresence } from 'framer-motion';
+import ComposeModal from '@/components/ComposeModal';
+
 export default function MainLayout() {
     const [selectedEmailId, setSelectedEmailId] = useState<string | null>(MOCK_EMAILS[0].id);
+    const [isComposeOpen, setIsComposeOpen] = useState(false);
 
     const selectedEmail = MOCK_EMAILS.find(e => e.id === selectedEmailId);
 
@@ -15,7 +19,10 @@ export default function MainLayout() {
         /* Main Dashboard Container - Full Window Fill */
         <div className="flex h-full w-full overflow-hidden bg-white/40">
             {/* Column 1: Sidebar */}
-            <Sidebar className="w-64 flex flex-col shrink-0" />
+            <Sidebar
+                className="w-64 flex flex-col shrink-0"
+                onCompose={() => setIsComposeOpen(true)}
+            />
 
             {/* Column 2: Message List */}
             <EmailList
@@ -30,6 +37,13 @@ export default function MainLayout() {
                 className="flex-1 flex flex-col"
                 email={selectedEmail}
             />
+
+            {/* Compose Modal Overlay */}
+            <AnimatePresence>
+                {isComposeOpen && (
+                    <ComposeModal onClose={() => setIsComposeOpen(false)} />
+                )}
+            </AnimatePresence>
         </div>
     );
 }
