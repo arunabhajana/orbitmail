@@ -70,7 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 
             {/* Compose Button */}
             <div className="p-4">
-                <button className="w-full flex items-center justify-center gap-2 bg-primary text-white py-2.5 rounded-lg shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all font-medium text-sm">
+                <button className="w-full flex items-center justify-center gap-2 bg-primary text-white py-2.5 rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all font-medium text-sm">
                     <Pencil className="w-[18px] h-[18px]" />
                     Compose
                 </button>
