@@ -59,73 +59,7 @@ body {
   flex-direction: column;
 }
 
-/* Ensure buttons in titlebar are clickable if we add any */
-.titlebar button {
-  -webkit-app-region: no-drag;
-}
-
-.titlebar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-
-  height: 48px;
-
-  display: flex;
-  align-items: center;
-
-  backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.15);
-
-  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-
-  z-index: 100;
-  -webkit-app-region: drag;
-}
-
-.brand {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-
-  font-family:
-    "Inter",
-    "SF Pro Display",
-    system-ui,
-    sans-serif;
-
-  color: rgba(20, 20, 20, 0.85);
-}
-
-.win-btn {
-  width: 34px;
-  height: 28px;
-
-  border-radius: 8px;
-  border: none;
-
-  background: transparent;
-  cursor: pointer;
-
-  font-size: 14px;
-
-  -webkit-app-region: no-drag;
-  transition: background 0.15s ease;
-}
-
-.win-btn:hover {
-  background: rgba(255, 255, 255, 0.35);
-}
-
-.win-btn.close:hover {
-  background: #ff5f57;
-  color: white;
-}
-
-.app-window>*:not(.titlebar) {
-  padding-top: 48px;
-}
+/* Titlebar styles moved to component */
 
 /* Define basic colors for Lucide icons and text since we removed the complex theme */
 @theme {

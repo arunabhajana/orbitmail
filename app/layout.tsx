@@ -28,7 +28,9 @@ export default function RootLayout({
       >
         <div className="app-window">
           <TitlebarWrapper />
-          {children}
+          <div className="pt-[30px] h-full w-full">
+            {children}
+          </div>
         </div>
       </body>
     </html>
