@@ -27,14 +27,14 @@ const WindowControl = memo(({
     icon: Icon,
     className,
     iconClassName,
-    iconSize = 18,
-    iconStrokeWidth = 2.5,
+    iconSize = 14,
+    iconStrokeWidth = 2,
     iconRx,
     ...props
 }: WindowControlProps) => (
     <button
         className={cn(
-            "w-[36px] h-[26px] flex items-center justify-center rounded-md transition-all active:scale-95",
+            "w-[36px] h-[26px] flex items-center justify-center rounded-md transition-colors",
             "bg-transparent hover:bg-black/5 text-foreground/70",
             className
         )}
@@ -128,7 +128,7 @@ export default function Titlebar() {
             </div>
 
             {/* Right: Window Controls */}
-            <div className="justify-self-end flex gap-1.5 px-1.5">
+            <div className="justify-self-end flex gap-1 px-1">
                 <WindowControl
                     icon={Minus}
                     onClick={() => { appWindow?.minimize(); }}
@@ -136,15 +136,14 @@ export default function Titlebar() {
                 />
                 <WindowControl
                     icon={Square}
-                    iconSize={16}
-                    iconRx={4}
+                    iconSize={12}
                     onClick={() => { appWindow?.toggleMaximize(); }}
                     aria-label="Maximize"
                 />
                 <WindowControl
                     icon={X}
                     onClick={() => { appWindow?.close(); }}
-                    className="hover:bg-[#e81123] hover:text-white"
+                    className="hover:bg-red-500 hover:text-white"
                     aria-label="Close"
                 />
             </div>
