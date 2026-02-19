@@ -8,7 +8,8 @@ import {
     Trash2,
     Settings,
     LogOut,
-    UserPlus
+    UserPlus,
+    Pencil
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -185,6 +186,16 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                     </div>
                 </div>
             </nav>
+
+            {/* 4. Compose Button */}
+            <div className="p-4">
+                <button
+                    className="w-full flex items-center justify-center gap-2 bg-primary text-white py-2.5 rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all font-medium text-sm"
+                >
+                    <Pencil className="w-[18px] h-[18px]" />
+                    Compose
+                </button>
+            </div>
         </aside>
     );
 };
