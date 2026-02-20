@@ -1,0 +1,29 @@
+use crate::auth::account::UserProfile;
+use crate::auth::oauth;
+use crate::auth::session;
+use tauri::{AppHandle, command};
+
+#[command]
+pub async fn login_google(app_handle: AppHandle) -> Result<UserProfile, String> {
+    let account = oauth::start_google_login().await?;
+    session::save_account(&app_handle, account.clone(), true)?;
+    Ok(UserProfile::from(account))
+}
+
+#[command]
+pub fn get_current_user(app_handle: AppHandle) -> Option<UserProfile> {
+    session::get_active_account(&app_handle).map(UserProfile::from)
+}
+
+#[command]
+pub fn list_accounts(app_handle: AppHandle) -> Vec<UserProfile> {
+    session::load_accounts(&app_handle)
+        .into_iter()
+        .map(UserProfile::from)
+        .collect()
+}
+
+#[command]
+pub fn logout_user(app_handle: AppHandle, account_id: String) -> Result<(), String> {
+    session::remove_account(&app_handle, account_id)
+}

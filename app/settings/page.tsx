@@ -45,7 +45,7 @@ export default function SettingsPage() {
             {/* Left Sidebar Navigation */}
             <aside className="w-64 flex flex-col border-r border-black/5 bg-white/40 backdrop-blur-3xl p-4">
                 <div className="mb-8 px-2">
-                    <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6">
+                    <Link href="/inbox" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6">
                         <ChevronLeft className="w-4 h-4" />
                         <span className="text-sm font-medium">Back to Mail</span>
                     </Link>

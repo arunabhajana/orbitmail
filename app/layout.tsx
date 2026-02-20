@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import TitlebarWrapper from "@/components/TitlebarWrapper"; // Wrapper handles client-side only import
+import { AuthProvider } from "@/components/AuthContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,12 +27,14 @@ export default function RootLayout({
         className={`${inter.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
-        <div className="app-window">
-          <TitlebarWrapper />
-          <div className="pt-[30px] h-full w-full">
-            {children}
+        <AuthProvider>
+          <div className="app-window">
+            <TitlebarWrapper />
+            <div className="pt-[30px] h-full w-full">
+              {children}
+            </div>
           </div>
-        </div>
+        </AuthProvider>
       </body>
     </html>
   );

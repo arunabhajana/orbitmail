@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { Settings2, Lock, ShieldCheck } from "lucide-react";
 import gsap from "gsap";
 import LoadingOrion from "./LoadingOrion";
+import { useAuth } from "./AuthContext";
 
 const LoginPage = () => {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const cardRef = useRef<HTMLDivElement>(null);
+
+    const { loginWithGoogle } = useAuth();
 
     const handleGoogleLogin = () => {
         const tl = gsap.timeline();
@@ -35,18 +38,13 @@ const LoginPage = () => {
                 ease: "power2.in",
                 onComplete: () => {
                     setIsLoading(true);
-                    // 3. Wait in Loading State then Transition
-                    setTimeout(() => {
-                        router.push("/inbox");
-                    }, 2500);
+                    loginWithGoogle();
                 }
             }, "-=0.4");
         } else {
             // Fallback if decorations missing
             setIsLoading(true);
-            setTimeout(() => {
-                router.push("/inbox");
-            }, 2500);
+            loginWithGoogle();
         }
     };
 
