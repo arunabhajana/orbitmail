@@ -1,5 +1,6 @@
 mod auth;
 mod commands;
+mod mail;
 
 use crate::commands::auth_commands::*;
 use tauri::Manager;
@@ -32,7 +33,9 @@ pub fn run() {
       login_google,
       get_current_user,
       list_accounts,
-      logout_user
+      logout_user,
+      bootstrap_accounts,
+      get_mailboxes
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

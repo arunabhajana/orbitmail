@@ -27,3 +27,16 @@ pub fn list_accounts(app_handle: AppHandle) -> Vec<UserProfile> {
 pub fn logout_user(app_handle: AppHandle, account_id: String) -> Result<(), String> {
     session::remove_account(&app_handle, account_id)
 }
+
+#[command]
+pub async fn bootstrap_accounts(app_handle: AppHandle) -> Result<crate::auth::bootstrap::BootstrapResult, String> {
+    Ok(crate::auth::bootstrap::bootstrap_accounts(&app_handle))
+}
+
+#[command]
+pub async fn get_mailboxes(app_handle: AppHandle) -> Result<Vec<crate::mail::imap_client::Mailbox>, String> {
+    let account = session::get_active_account(&app_handle)
+        .ok_or_else(|| "No active account".to_string())?;
+    
+    crate::mail::imap_client::get_mailboxes(account).await
+}

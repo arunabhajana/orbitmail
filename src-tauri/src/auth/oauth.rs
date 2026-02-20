@@ -50,10 +50,16 @@ pub async fn start_google_login() -> Result<Account, String> {
     let (authorize_url, _csrf_state) = client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("openid".to_string()))
-        .add_scope(Scope::new("email".to_string()))
-        .add_scope(Scope::new("profile".to_string()))
+        .add_scope(Scope::new("https://www.googleapis.com/auth/userinfo.email".to_string()))
+        .add_scope(Scope::new("https://www.googleapis.com/auth/userinfo.profile".to_string()))
+        .add_scope(Scope::new("https://mail.google.com/".to_string()))
+        .add_extra_param("access_type", "offline")
+        .add_extra_param("prompt", "consent")
+        .add_extra_param("include_granted_scopes", "true")
         .set_pkce_challenge(pkce_challenge)
         .url();
+
+
 
     open::that(authorize_url.as_str()).map_err(|e| e.to_string())?;
 

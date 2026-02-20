@@ -14,6 +14,9 @@ export interface User {
 interface AuthContextType {
     user: User | null;
     loading: boolean;
+    mailboxLoading: boolean;
+    setMailboxLoading: (loading: boolean) => void;
+    needsRefresh: boolean;
     isAuthenticated: boolean;
     loginWithGoogle: () => Promise<void>;
     logout: (accountId: string) => Promise<void>;
@@ -28,22 +31,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [needsRefresh, setNeedsRefresh] = useState(false);
+    const [mailboxLoading, setMailboxLoading] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
-        restoreSession();
+        bootstrap();
     }, []);
 
     /**
-     * Attempts to restore the active user session from the backend.
-     * Falls back to localStorage for seamless UI transitions.
+     * Bootstraps the application session.
+     * Fetches active account status and validates tokens.
      */
-    const restoreSession = async () => {
+    const bootstrap = async () => {
         try {
-            const currentUser = await invoke<User | null>("get_current_user");
+            const result = await invoke<{ user: User | null; needs_refresh: boolean }>("bootstrap_accounts");
 
-            if (currentUser) {
-                setUser(currentUser);
+            if (result.user) {
+                setUser(result.user);
+                setNeedsRefresh(result.needs_refresh);
             } else {
                 const storedUser = localStorage.getItem("orion_user");
                 if (storedUser) {
@@ -51,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
         } catch (error) {
-            console.error("Auth: Session restoration failed", error);
+            console.error("Auth: Bootstrap failed", error);
         } finally {
             setLoading(false);
         }
@@ -93,6 +99,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             value={{
                 user,
                 loading,
+                mailboxLoading,
+                setMailboxLoading,
+                needsRefresh,
                 isAuthenticated: !!user,
                 loginWithGoogle,
                 logout,
