@@ -1,5 +1,5 @@
 {
-  "name": "orbitmail",
+  "name": "orionmail",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -14,6 +14,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.34.2",
+    "gsap": "^3.14.2",
     "lucide-react": "^0.574.0",
     "next": "16.1.6",
     "react": "19.2.3",

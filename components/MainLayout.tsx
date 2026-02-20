@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import EmailList from '@/components/EmailList';
 import EmailDetail from '@/components/EmailDetail';
@@ -8,25 +8,55 @@ import { MOCK_EMAILS } from '@/lib/data';
 
 import { AnimatePresence } from 'framer-motion';
 import ComposeModal from '@/components/ComposeModal';
+import gsap from 'gsap';
 
 export default function MainLayout() {
     const [selectedEmailId, setSelectedEmailId] = useState<string | null>(MOCK_EMAILS[0].id);
     const [isComposeOpen, setIsComposeOpen] = useState(false);
+    const layoutRef = useRef<HTMLDivElement>(null);
 
     const selectedEmail = MOCK_EMAILS.find(e => e.id === selectedEmailId);
 
+    useLayoutEffect(() => {
+        const ctx = gsap.context(() => {
+            const tl = gsap.timeline();
+
+            tl.from('.sidebar-anim', {
+                x: -30,
+                opacity: 0,
+                duration: 0.6,
+                ease: "power2.out"
+            });
+
+            tl.from('.list-anim', {
+                opacity: 0,
+                duration: 0.8,
+                ease: "power1.inOut"
+            }, "-=0.4");
+
+            tl.from('.detail-anim', {
+                x: 30,
+                opacity: 0,
+                duration: 0.6,
+                ease: "power2.out"
+            }, "-=0.6");
+        }, layoutRef);
+
+        return () => ctx.revert();
+    }, []);
+
     return (
         /* Main Dashboard Container - Full Window Fill */
-        <div className="flex h-full w-full overflow-hidden bg-white/40">
+        <div ref={layoutRef} className="flex h-full w-full overflow-hidden bg-white/40">
             {/* Column 1: Sidebar */}
             <Sidebar
-                className="w-64 flex flex-col shrink-0"
+                className="sidebar-anim w-64 flex flex-col shrink-0"
                 onCompose={() => setIsComposeOpen(true)}
             />
 
             {/* Column 2: Message List */}
             <EmailList
-                className="w-[380px] flex flex-col shrink-0"
+                className="list-anim w-[380px] flex flex-col shrink-0"
                 emails={MOCK_EMAILS}
                 selectedEmailId={selectedEmailId}
                 onSelectEmail={(id) => setSelectedEmailId(id)}
@@ -34,7 +64,7 @@ export default function MainLayout() {
 
             {/* Column 3: Reading Pane */}
             <EmailDetail
-                className="flex-1 flex flex-col"
+                className="detail-anim flex-1 flex flex-col"
                 email={selectedEmail}
             />
 

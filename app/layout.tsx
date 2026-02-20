@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "OrbitMail",
+  title: "OrionMail",
   description: "Glassmorphic Email Dashboard",
 };
 
