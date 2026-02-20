@@ -42,29 +42,42 @@ export default function MainLayout() {
         ));
     };
 
+    const fetchCache = async () => {
+        try {
+            const cached: any[] = await invoke('get_cached_messages');
+            if (cached && cached.length > 0) {
+                const formattedEmails = cached.map((msg, index) => ({
+                    id: msg.uid.toString(),
+                    sender: msg.from.split('<')[0].trim() || msg.from,
+                    senderEmail: msg.from,
+                    subject: msg.subject || '(No Subject)',
+                    preview: 'Message body not fetched.',
+                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.from.split('<')[0].trim() || msg.from)}&background=random`,
+                    time: new Date(msg.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    date: msg.date,
+                    unread: !msg.seen,
+                    folder: "inbox" as const,
+                    tags: [],
+                    starred: msg.flagged,
+                    body: '<p>Message body not fetched in this milestone.</p>',
+                }));
+                setEmails(formattedEmails);
+            }
+        } catch (error) {
+            console.error("Failed to load cache", error);
+        }
+    };
+
     const handleSync = async (isBackground = false) => {
         if (isSyncing) return;
         setIsSyncing(true);
         try {
-            const messages: any[] = await invoke('get_inbox_messages');
-            const formattedEmails = messages.map((msg, index) => ({
-                id: msg.uid.toString(),
-                sender: msg.from.split('<')[0].trim() || msg.from,
-                senderEmail: msg.from,
-                subject: msg.subject || '(No Subject)',
-                preview: 'Message body not fetched.',
-                avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.from.split('<')[0].trim() || msg.from)}&background=random`,
-                time: new Date(msg.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                date: msg.date,
-                unread: !msg.seen,
-                folder: "inbox" as const,
-                tags: [],
-                starred: msg.flagged,
-                body: '<p>Message body not fetched in this milestone.</p>',
-            }));
+            const newMessages: number = await invoke('sync_inbox');
+            console.log(`Synced: ${newMessages} new emails`);
 
-            // Replaces the emails array directly.
-            setEmails(formattedEmails);
+            // Reload cache seamlessly after sync completes
+            await fetchCache();
+
         } catch (e) {
             console.error("Failed to sync messages:", e);
             if (!isBackground) {
@@ -77,36 +90,13 @@ export default function MainLayout() {
 
     useEffect(() => {
         const loadCache = async () => {
-            try {
-                const cached: any[] = await invoke('get_cached_messages');
-                if (cached && cached.length > 0) {
-                    const formattedEmails = cached.map((msg, index) => ({
-                        id: msg.uid.toString(),
-                        sender: msg.from.split('<')[0].trim() || msg.from,
-                        senderEmail: msg.from,
-                        subject: msg.subject || '(No Subject)',
-                        preview: 'Message body not fetched.',
-                        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.from.split('<')[0].trim() || msg.from)}&background=random`,
-                        time: new Date(msg.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        date: msg.date,
-                        unread: !msg.seen,
-                        folder: "inbox" as const,
-                        tags: [],
-                        starred: msg.flagged,
-                        body: '<p>Message body not fetched in this milestone.</p>',
-                    }));
-                    setEmails(formattedEmails);
-                }
-            } catch (error) {
-                console.error("Failed to load cache", error);
-            } finally {
-                setIsBootstrapping(false);
+            await fetchCache();
+            setIsBootstrapping(false);
 
-                // Delay background sync to prevent layout jank
-                setTimeout(() => {
-                    handleSync(true);
-                }, 500);
-            }
+            // Delay background sync to prevent layout jank
+            setTimeout(() => {
+                handleSync(true);
+            }, 500);
         };
 
         loadCache();

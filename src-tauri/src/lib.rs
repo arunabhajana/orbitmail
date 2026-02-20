@@ -40,7 +40,8 @@ pub fn run() {
       bootstrap_accounts,
       get_mailboxes,
       get_inbox_messages,
-      get_cached_messages
+      get_cached_messages,
+      sync_inbox
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

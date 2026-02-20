@@ -28,7 +28,56 @@ pub fn init_db(app_handle: &AppHandle) -> Result<(), String> {
         (),
     ).map_err(|e| e.to_string())?;
 
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS mailbox_state (
+            mailbox TEXT PRIMARY KEY,
+            uid_validity INTEGER
+        )",
+        (),
+    ).map_err(|e| e.to_string())?;
+
     Ok(())
+}
+
+pub fn get_mailbox_validity(app_handle: &AppHandle, mailbox: &str) -> Result<Option<u32>, String> {
+    let db_path = get_db_path(app_handle)?;
+    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+
+    let mut stmt = conn.prepare("SELECT uid_validity FROM mailbox_state WHERE mailbox = ?1").unwrap();
+    let validity = stmt.query_row([mailbox], |row| row.get(0)).ok();
+
+    Ok(validity)
+}
+
+pub fn update_mailbox_validity(app_handle: &AppHandle, mailbox: &str, validity: u32) -> Result<(), String> {
+    let db_path = get_db_path(app_handle)?;
+    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT OR REPLACE INTO mailbox_state (mailbox, uid_validity) VALUES (?1, ?2)",
+        rusqlite::params![mailbox, validity],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+pub fn clear_messages(app_handle: &AppHandle) -> Result<(), String> {
+    let db_path = get_db_path(app_handle)?;
+    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+
+    conn.execute("DELETE FROM messages", ()).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+pub fn get_highest_uid(app_handle: &AppHandle) -> Result<u32, String> {
+    let db_path = get_db_path(app_handle)?;
+    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+
+    let mut stmt = conn.prepare("SELECT MAX(uid) FROM messages").unwrap();
+    let max_uid: Option<u32> = stmt.query_row([], |row| row.get(0)).unwrap_or(None);
+
+    Ok(max_uid.unwrap_or(0))
 }
 
 pub fn insert_or_update_messages(app_handle: &AppHandle, messages: &[MessageHeader]) -> Result<(), String> {

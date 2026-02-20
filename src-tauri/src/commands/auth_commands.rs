@@ -50,6 +50,14 @@ pub async fn get_inbox_messages(app_handle: AppHandle) -> Result<Vec<crate::mail
 }
 
 #[command]
+pub async fn sync_inbox(app_handle: AppHandle) -> Result<u32, String> {
+    let account = session::get_active_account(&app_handle)
+        .ok_or_else(|| "No active account".to_string())?;
+
+    crate::mail::sync::sync_inbox(&app_handle, account).await
+}
+
+#[command]
 pub fn get_cached_messages(app_handle: AppHandle) -> Result<Vec<crate::mail::message_list::MessageHeader>, String> {
     crate::mail::database::load_cached_messages(&app_handle, 25)
 }
