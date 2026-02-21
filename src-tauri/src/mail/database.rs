@@ -5,8 +5,14 @@ use tauri::Manager;
 use crate::mail::message_list::MessageHeader;
 
 pub fn get_db_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
-    let app_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&app_dir).map_err(|e| e.to_string())?;
+    let app_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve App Data Dir: {}", e))?;
+        
+    std::fs::create_dir_all(&app_dir)
+        .map_err(|e| format!("Failed to create DB directory: {}", e))?;
+        
     Ok(app_dir.join("orbitmail.db"))
 }
 

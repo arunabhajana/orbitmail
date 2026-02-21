@@ -38,6 +38,23 @@ impl Drop for SessionGuard {
 }
 
 pub fn create_session(account: &Account) -> Result<ImapSession, String> {
+    let mut session = connect_and_authenticate(account)?;
+
+    // GUARANTEE: Always select INBOX on fresh creation
+    session.select("INBOX").map_err(|e| format!("IMAP Select Error: {}", e))?;
+
+    log::info!("Created new IMAP Session.");
+
+    Ok(ImapSession {
+        session,
+        last_used: Instant::now(),
+    })
+}
+
+/// Helper function to establish a fresh, authenticated connection to the IMAP server.
+fn connect_and_authenticate(
+    account: &Account,
+) -> Result<imap::Session<native_tls::TlsStream<std::net::TcpStream>>, String> {
     let domain = "imap.gmail.com";
     let port = 993;
 
@@ -54,27 +71,23 @@ pub fn create_session(account: &Account) -> Result<ImapSession, String> {
         account.email, account.access_token
     );
 
+    // Custom Authenticator implementation for XOAUTH2
     struct XoAuth2 { auth_string: String }
+    
     impl imap::Authenticator for XoAuth2 {
         type Response = String;
-        fn process(&self, _: &[u8]) -> Self::Response { self.auth_string.clone() }
+        fn process(&self, _: &[u8]) -> Self::Response { 
+            self.auth_string.clone() 
+        }
     }
 
     let auth = XoAuth2 { auth_string: auth_raw };
 
-    let mut session = client
+    let session = client
         .authenticate("XOAUTH2", &auth)
         .map_err(|(e, _)| format!("IMAP Authentication Failed: {}", e))?;
 
-    // GUARANTEE: Always select INBOX on fresh creation
-    session.select("INBOX").map_err(|e| format!("IMAP Select Error: {}", e))?;
-
-    log::info!("Created new IMAP Session.");
-
-    Ok(ImapSession {
-        session,
-        last_used: Instant::now(),
-    })
+    Ok(session)
 }
 
 pub fn execute_with_session<F, R>(account: &Account, mut f: F) -> Result<R, String>

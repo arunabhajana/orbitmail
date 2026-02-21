@@ -30,24 +30,26 @@ struct CidCandidate {
     mime: String,
 }
 
-fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) -> Result<String, String> {
-    let parsed = parse_mail(raw_email)
-        .map_err(|e| format!("Parsing error: {}", e))?;
+struct MimeParts {
+    best_html: Option<String>,
+    best_text: Option<String>,
+    cid_candidates: Vec<CidCandidate>,
+    all_parts: Vec<Vec<u8>>, // store raw body bytes instead of lifetimes
+}
 
-    let mut best_html: Option<String> = None;
-    let mut best_text: Option<String> = None;
-    let mut cid_candidates: Vec<CidCandidate> = Vec::new();
-    let mut all_parts: Vec<&ParsedMail> = Vec::new();
+impl MimeParts {
+    fn new() -> Self {
+        Self {
+            best_html: None,
+            best_text: None,
+            cid_candidates: Vec::new(),
+            all_parts: Vec::new(),
+        }
+    }
 
-    fn traverse<'a>(
-        part: &'a ParsedMail<'a>, 
-        parts: &mut Vec<&'a ParsedMail<'a>>,
-        best_html: &mut Option<String>, 
-        best_text: &mut Option<String>,
-        cids: &mut Vec<CidCandidate>
-    ) {
-        let current_index = parts.len();
-        parts.push(part);
+    fn traverse(&mut self, part: &ParsedMail) {
+        let current_index = self.all_parts.len();
+        self.all_parts.push(part.get_body_raw().unwrap_or_default());
 
         let is_attachment = part.headers.iter()
             .find(|h| h.get_key().to_lowercase() == "content-disposition")
@@ -64,7 +66,7 @@ fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) 
                     cid_val = cid_val[1..cid_val.len() - 1].to_string();
                 }
                 
-                cids.push(CidCandidate {
+                self.cid_candidates.push(CidCandidate {
                     cid: cid_val,
                     part_index: current_index,
                     mime: ctype.clone(),
@@ -76,28 +78,97 @@ fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) 
             if ctype == "text/html" {
                 if let Ok(body) = part.get_body() {
                     if body.trim().len() >= 20 {
-                        *best_html = Some(body);
+                        self.best_html = Some(body);
                     }
                 }
             } else if ctype == "text/plain" {
                 if let Ok(body) = part.get_body() {
                     if !body.trim().is_empty() {
-                        *best_text = Some(body);
+                        self.best_text = Some(body);
                     }
                 }
             }
         } else {
             for subpart in &part.subparts {
-                traverse(subpart, parts, best_html, best_text, cids);
+                self.traverse(subpart);
             }
         }
     }
+}
 
-    traverse(&parsed, &mut all_parts, &mut best_html, &mut best_text, &mut cid_candidates);
+fn rewrite_cid_images(
+    app_handle: &AppHandle, 
+    uid: u32, 
+    mut html: String, 
+    parts: &MimeParts
+) -> String {
+    if parts.cid_candidates.is_empty() {
+        return html;
+    }
 
-    let mut final_html = if let Some(html) = best_html {
+    let Ok(re) = Regex::new(r#"(?i)src\s*=\s*["']?\s*cid:([^"'\s>]+)"#) else {
+        return html;
+    };
+
+    let mut referenced_cids = HashSet::new();
+    for cap in re.captures_iter(&html) {
+        if let Some(m) = cap.get(1) {
+            referenced_cids.insert(m.as_str().to_string());
+        }
+    }
+
+    if referenced_cids.is_empty() {
+        return html;
+    }
+
+    let Ok(cache_dir) = app_handle.path().app_cache_dir() else { return html };
+    let inline_dir = cache_dir.join("orbitmail_inline").join(get_session_dir_name());
+    let _ = fs::create_dir_all(&inline_dir);
+    
+    for candidate in &parts.cid_candidates {
+        if referenced_cids.contains(&candidate.cid) {
+            let safe_cid = candidate.cid.replace(|c: char| !c.is_ascii_alphanumeric(), "_");
+            let ext = match candidate.mime.as_str() {
+                "image/png" => "png",
+                "image/jpeg" | "image/jpg" => "jpg",
+                "image/gif" => "gif",
+                "image/webp" => "webp",
+                _ => "bin",
+            };
+            let file_name = format!("uid_{}_cid_{}.{}", uid, safe_cid, ext);
+            let filepath = inline_dir.join(&file_name);
+
+            // Write if missing and under 5MB
+            if !filepath.exists() {
+                let raw_bytes = &parts.all_parts[candidate.part_index];
+                if raw_bytes.len() <= 5 * 1024 * 1024 {
+                    let _ = fs::write(&filepath, raw_bytes);
+                }
+            }
+
+            // Tauri asset replacement string
+            let asset_url = format!("asset://localhost/{}", filepath.to_string_lossy().replace('\\', "/"));
+            
+            // String Rewrite
+            let cid_pattern = format!("cid:{}", candidate.cid);
+            html = html.replace(&cid_pattern, &asset_url);
+        }
+    }
+
+    html
+}
+
+fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) -> Result<String, String> {
+    let parsed = parse_mail(raw_email)
+        .map_err(|e| format!("Parsing error: {}", e))?;
+
+    let mut parts = MimeParts::new();
+    parts.traverse(&parsed);
+
+    // 1. Determine best viewing payload
+    let base_html = if let Some(html) = parts.best_html.clone() {
         html
-    } else if let Some(text) = best_text {
+    } else if let Some(text) = parts.best_text.clone() {
         let escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
         format!("<pre style=\"white-space:pre-wrap;font-family:system-ui\">{}</pre>", escaped)
     } else {
@@ -106,59 +177,8 @@ fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) 
         format!("<pre style=\"white-space:pre-wrap;font-family:system-ui\">{}</pre>", escaped)
     };
 
-    // Lazy Extraction of CID images
-    if !cid_candidates.is_empty() {
-        if let Ok(re) = Regex::new(r#"(?i)src\s*=\s*["']?\s*cid:([^"'\s>]+)"#) {
-            let mut referenced_cids = HashSet::new();
-            for cap in re.captures_iter(&final_html) {
-                if let Some(m) = cap.get(1) {
-                    referenced_cids.insert(m.as_str().to_string());
-                }
-            }
-
-            if !referenced_cids.is_empty() {
-                if let Ok(cache_dir) = app_handle.path().app_cache_dir() {
-                    let inline_dir = cache_dir.join("orbitmail_inline").join(get_session_dir_name());
-                    let _ = fs::create_dir_all(&inline_dir);
-                    
-                    for candidate in cid_candidates {
-                        if referenced_cids.contains(&candidate.cid) {
-                            let part = all_parts[candidate.part_index];
-                            let safe_cid = candidate.cid.replace(|c: char| !c.is_ascii_alphanumeric(), "_");
-                            let ext = match candidate.mime.as_str() {
-                                "image/png" => "png",
-                                "image/jpeg" => "jpg",
-                                "image/jpg" => "jpg",
-                                "image/gif" => "gif",
-                                "image/webp" => "webp",
-                                _ => "bin",
-                            };
-                            let file_name = format!("uid_{}_cid_{}.{}", uid, safe_cid, ext);
-                            let filepath = inline_dir.join(&file_name);
-
-                            // Write if missing and under 5MB
-                            if !filepath.exists() {
-                                if let Ok(raw_bytes) = part.get_body_raw() {
-                                    if raw_bytes.len() <= 5 * 1024 * 1024 {
-                                        let _ = fs::write(&filepath, raw_bytes);
-                                    }
-                                }
-                            }
-
-                            // Tauri asset replacement string
-                            let asset_url = format!("asset://localhost/{}", filepath.to_string_lossy().replace('\\', "/"));
-                            
-                            // String Rewrite
-                            let cid_pattern = format!("cid:{}", candidate.cid);
-                            final_html = final_html.replace(&cid_pattern, &asset_url);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(final_html)
+    // 2. Extensively parse and replace inline CID images
+    Ok(rewrite_cid_images(app_handle, uid, base_html, &parts))
 }
 
 fn generate_preview(html: &str) -> String {
@@ -203,7 +223,7 @@ pub async fn get_message_body(app_handle: &AppHandle, account: Account, uid: u32
     tokio::task::spawn_blocking(move || {
         // 1. Get the current mailbox validity to query cache properly
         let stored_validity = database::get_mailbox_validity(&app_handle_clone, "INBOX")
-            .unwrap_or(None)
+            .unwrap_or_default()
             .ok_or_else(|| "No stored mailbox validity. Resync required.".to_string())?;
 
         // 1.5 Check Memory Cache Primary

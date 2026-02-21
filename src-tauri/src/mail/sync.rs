@@ -114,44 +114,8 @@ pub async fn sync_inbox(app_handle: &AppHandle, account: Account) -> Result<u32,
 
             let mut messages = Vec::new();
             for msg in fetch_results.iter() {
-                if let (Some(actual_uid), Some(body)) = (msg.uid, msg.header()) {
-                    let seen = msg.flags().iter().any(|f| match f {
-                        imap::types::Flag::Seen => true,
-                        _ => false,
-                    });
-                    let flagged = msg.flags().iter().any(|f| match f {
-                        imap::types::Flag::Flagged => true,
-                        _ => false,
-                    });
-
-                    let parsed = parse_mail(body).map_err(|e| format!("Header Parse Error: {}", e))?;
-                    
-                    let mut subject = String::new();
-                    let mut from = String::new();
-                    let mut date = String::new();
-
-                    for header in parsed.get_headers() {
-                        let key = header.get_key().to_lowercase();
-                        let val = header.get_value();
-
-                        match key.as_str() {
-                            "subject" => subject = val,
-                            "from" => from = val,
-                            "date" => date = val,
-                            _ => {}
-                        }
-                    }
-
-                    messages.push(MessageHeader {
-                        uid: actual_uid,
-                        uid_validity: server_validity,
-                        subject,
-                        from,
-                        date,
-                        seen,
-                        flagged,
-                        snippet: None,
-                    });
+                if let Some(header) = parse_header_to_message(msg, server_validity) {
+                    messages.push(header);
                 }
             }
 
@@ -191,4 +155,41 @@ pub async fn sync_inbox(app_handle: &AppHandle, account: Account) -> Result<u32,
     }
 
     new_messages_count
+}
+
+fn parse_header_to_message(msg: &imap::types::Fetch, server_validity: u32) -> Option<MessageHeader> {
+    let actual_uid = msg.uid?;
+    let body = msg.header()?;
+
+    let seen = msg.flags().iter().any(|f| matches!(f, imap::types::Flag::Seen));
+    let flagged = msg.flags().iter().any(|f| matches!(f, imap::types::Flag::Flagged));
+
+    let parsed = parse_mail(body).ok()?;
+    
+    let mut subject = String::new();
+    let mut from = String::new();
+    let mut date = String::new();
+
+    for header in parsed.get_headers() {
+        let key = header.get_key().to_lowercase();
+        let val = header.get_value();
+
+        match key.as_str() {
+            "subject" => subject = val,
+            "from" => from = val,
+            "date" => date = val,
+            _ => {}
+        }
+    }
+
+    Some(MessageHeader {
+        uid: actual_uid,
+        uid_validity: server_validity,
+        subject,
+        from,
+        date,
+        seen,
+        flagged,
+        snippet: None,
+    })
 }
