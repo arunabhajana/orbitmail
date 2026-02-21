@@ -231,7 +231,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -10 }}
                         transition={{ duration: 0.2 }}
-                        className="max-w-3xl mx-auto"
+                        className="w-full max-w-5xl mx-auto"
                     >
                         <MessageHeader email={email} />
 
@@ -244,7 +244,8 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
                             <iframe
                                 title="Email Content"
                                 className="w-full bg-white border-0 email-content-iframe"
-                                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+                                scrolling="no"
                                 style={{ height: `${iframeHeight}px`, overflow: 'hidden' }}
                                 srcDoc={`
                                     <!DOCTYPE html>
@@ -253,13 +254,15 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
                                         <meta charset="utf-8">
                                         <meta name="viewport" content="width=device-width, initial-scale=1">
                                         <style>
-                                            body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; word-break: break-word; }
+                                            html, body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; overflow: hidden; width: 100%; }
                                             img { max-width: 100%; height: auto; }
                                             a { color: #2563eb; }
+                                            #email-content-wrapper { display: block; overflow: hidden; }
                                         </style>
                                     </head>
                                     <body>
-                                        ${DOMPurify.sanitize(
+                                        <div id="email-content-wrapper">
+                                            ${DOMPurify.sanitize(
                                     sanitizeHtml(bodyContent, {
                                         allowedTags: sanitizeHtml.defaults.allowedTags.concat([
                                             "img", "table", "tbody", "tr", "td", "th", "style", "head", "meta", "html", "body"
@@ -273,12 +276,39 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
                                     }),
                                     { FORBID_TAGS: ['script', 'iframe', 'object', 'embed'] }
                                 )}
+                                        </div>
                                         <script>
-                                            // Auto-resize iframe height
-                                            window.onload = () => {
-                                                const height = document.body.scrollHeight || document.documentElement.scrollHeight;
-                                                window.parent.postMessage({ type: 'resize', height: height, id: '${email.id}' }, '*');
+                                            const wrapper = document.getElementById('email-content-wrapper');
+                                            let lastHeight = 0;
+                                            
+                                            const sendHeight = () => {
+                                                if (!wrapper) return;
+                                                // Only measure the strict wrapper height, ignoring the stretched iframe
+                                                const height = wrapper.scrollHeight;
+                                                
+                                                if (height !== lastHeight) {
+                                                    lastHeight = height;
+                                                    window.parent.postMessage({ type: 'resize', height: height, id: '${email.id}' }, '*');
+                                                }
                                             };
+                                            
+                                            window.addEventListener('load', sendHeight);
+                                            
+                                            // 1. Observe size changes strictly on wrapper, NOT document.body
+                                            new ResizeObserver(sendHeight).observe(wrapper);
+                                            
+                                            // 2. Observe DOM mutations strictly inside wrapper
+                                            new MutationObserver(sendHeight).observe(wrapper, { 
+                                                childList: true, subtree: true, attributes: true 
+                                            });
+                                            
+                                            // 3. Aggressive polling for 5 seconds
+                                            let pollCount = 0;
+                                            const pollInterval = setInterval(() => {
+                                                sendHeight();
+                                                pollCount++;
+                                                if (pollCount > 50) clearInterval(pollInterval);
+                                            }, 100);
                                         </script>
                                     </body>
                                     </html>
