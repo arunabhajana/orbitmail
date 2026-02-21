@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import gsap from "gsap";
 
-export default function LogoSpinner() {
+export default function LogoSpinner({ message = "Syncing inbox..." }: { message?: string }) {
     const svgRef = useRef<SVGSVGElement>(null);
     const topPathRef = useRef<SVGPathElement>(null);
     const bottomPathRef = useRef<SVGPathElement>(null);
@@ -57,12 +57,12 @@ export default function LogoSpinner() {
     }, []);
 
     return (
-        <div className="flex flex-col items-center justify-center gap-6 p-8">
-            <div className="relative flex items-center justify-center w-24 h-24 bg-white/60 backdrop-blur-md rounded-3xl shadow-xl shadow-indigo-500/10 border border-white/50">
+        <div className="flex flex-col items-center justify-center gap-8 p-8">
+            <div className="relative flex items-center justify-center">
                 {/* Subtle outer pulse */}
-                <div className="absolute inset-0 rounded-3xl animate-ping opacity-20 bg-gradient-to-tr from-blue-500 to-purple-500 duration-1000"></div>
+                <div className="absolute inset-[-30%] rounded-full animate-ping opacity-20 bg-gradient-to-tr from-blue-500 to-purple-500 duration-1000"></div>
 
-                <svg ref={svgRef} className="w-14 h-14 relative z-10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg ref={svgRef} className="w-24 h-24 relative z-10 drop-shadow-2xl" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <linearGradient id="spinner-grad" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stopColor="#2563eb" />
@@ -84,8 +84,8 @@ export default function LogoSpinner() {
                     />
                 </svg>
             </div>
-            <p ref={textRef} className="text-slate-600 font-medium tracking-wide">
-                Syncing inbox...
+            <p ref={textRef} className="text-slate-600 font-medium tracking-wide text-lg">
+                {message}
             </p>
         </div>
     );

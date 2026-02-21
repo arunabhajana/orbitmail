@@ -242,7 +242,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, currentFolder, 
             </nav>
 
             {/* 4. Compose Button */}
-            <div className="p-4">
+            <div className="p-4 pb-9">
                 <button
                     onClick={onCompose}
                     className="w-full flex items-center justify-center gap-2 bg-primary text-white py-2.5 rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all font-medium text-sm"

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import MainLayout from "@/components/MainLayout";
 import { useAuth } from "@/components/AuthContext";
+import LogoSpinner from "@/components/LogoSpinner";
 import { invoke } from "@tauri-apps/api/core";
 
 interface Mailbox {
@@ -39,11 +40,8 @@ export default function InboxPage() {
   // If still performing initial auth bootstrap
   if (loading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#F8F9FA]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
-          <div className="text-slate-500 font-medium animate-pulse">Verifying Session...</div>
-        </div>
+      <div className="h-screen w-screen flex items-center justify-center bg-[#F8F9FA]/80 backdrop-blur-xl">
+        <LogoSpinner message="Verifying Session..." />
       </div>
     );
   }
@@ -51,11 +49,8 @@ export default function InboxPage() {
   // If connecting to IMAP
   if (mailboxLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#F8F9FA]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
-          <div className="text-slate-500 font-medium animate-pulse">Connecting to mailbox...</div>
-        </div>
+      <div className="h-screen w-screen flex items-center justify-center bg-[#F8F9FA]/80 backdrop-blur-xl">
+        <LogoSpinner message="Connecting to mailbox..." />
       </div>
     );
   }
@@ -63,11 +58,8 @@ export default function InboxPage() {
   // If initial inbox sync is running after first login
   if (isBootstrappingInbox) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#F8F9FA]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
-          <div className="text-slate-500 font-medium animate-pulse">Initializing your Inbox...</div>
-        </div>
+      <div className="h-screen w-screen flex items-center justify-center bg-[#F8F9FA]/80 backdrop-blur-xl">
+        <LogoSpinner message="Initializing your Inbox..." />
       </div>
     );
   }

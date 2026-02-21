@@ -90,16 +90,25 @@ const EmailListItem = memo(({
                         try {
                             const body: string = await invoke("get_message_body", { uid: Number(email.id) });
                             if (body) {
-                                // Strip hidden items, strip HTML, and normalize whitespace
+                                // Strip hidden items, styles, scripts, strip HTML, convert entities, and normalize whitespace
                                 const stripped = body
+                                    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+                                    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
                                     .replace(/<[^>]*display\s*:\s*none[^>]*>[\s\S]*?<\/[^>]+>/gi, ' ')
                                     .replace(/<[^>]+>/g, ' ')
+                                    .replace(/&nbsp;/g, ' ')
+                                    .replace(/&amp;/g, '&')
+                                    .replace(/&lt;/g, '<')
+                                    .replace(/&gt;/g, '>')
+                                    .replace(/&quot;/g, '"')
+                                    .replace(/&#39;/g, "'")
+                                    .replace(/(\b)(unsubscribe|subscribe|view in browser|click here)(\b)/gi, '')
                                     .replace(/\s+/g, ' ')
                                     .trim();
-                                const newPreview = stripped.length > 160 ? stripped.substring(0, 160) + '...' : stripped;
-                                if (newPreview) {
-                                    setPreviewText(newPreview);
-                                }
+
+                                const finalPreview = stripped || email.subject || "No preview available";
+                                const newPreview = finalPreview.length > 160 ? finalPreview.substring(0, 160) + '...' : finalPreview;
+                                setPreviewText(newPreview);
                                 fetchedPreviewUIDs.add(email.id);
                             }
                         } catch (err) {

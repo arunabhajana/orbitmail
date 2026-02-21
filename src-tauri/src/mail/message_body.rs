@@ -162,19 +162,37 @@ fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) 
 }
 
 fn generate_preview(html: &str) -> String {
+    let re_style = Regex::new(r"(?si)<style[^>]*>.*?</style>").unwrap();
+    let re_script = Regex::new(r"(?si)<script[^>]*>.*?</script>").unwrap();
     let re_hidden = Regex::new(r"(?si)<[^>]*display\s*:\s*none[^>]*>.*?</[^>]+>").unwrap();
-    let re_tags = Regex::new(r"(?i)<[^>]+>").unwrap();
+    let re_tags = Regex::new(r"(?si)<[^>]+>").unwrap();
+    let re_boiler = Regex::new(r"(?i)\b(unsubscribe|subscribe|view in browser|click here)\b").unwrap();
     let re_space = Regex::new(r"\s+").unwrap();
 
-    let stripped = re_hidden.replace_all(html, " ").to_string();
-    let stripped = re_tags.replace_all(&stripped, " ").to_string();
-    let stripped = re_space.replace_all(&stripped, " ").to_string();
-    let stripped = stripped.trim();
+    let mut stripped = re_style.replace_all(html, " ").to_string();
+    stripped = re_script.replace_all(&stripped, " ").to_string();
+    stripped = re_hidden.replace_all(&stripped, " ").to_string();
+    stripped = re_tags.replace_all(&stripped, " ").to_string();
+    
+    // HTML Entities
+    stripped = stripped.replace("&nbsp;", " ");
+    stripped = stripped.replace("&amp;", "&");
+    stripped = stripped.replace("&lt;", "<");
+    stripped = stripped.replace("&gt;", ">");
+    stripped = stripped.replace("&quot;", "\"");
+    stripped = stripped.replace("&#39;", "'");
+
+    // Boilerplate words
+    stripped = re_boiler.replace_all(&stripped, "").to_string();
+
+    // Clean whitespace
+    stripped = re_space.replace_all(&stripped, " ").to_string();
+    stripped = stripped.trim().to_string();
 
     if stripped.chars().count() > 160 {
         format!("{}...", stripped.chars().take(160).collect::<String>())
     } else {
-        stripped.to_string()
+        stripped
     }
 }
 

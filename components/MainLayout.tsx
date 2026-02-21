@@ -55,7 +55,7 @@ export default function MainLayout() {
                     sender: msg.from.split('<')[0].trim() || msg.from,
                     senderEmail: msg.from,
                     subject: msg.subject || '(No Subject)',
-                    preview: msg.snippet ? DOMPurify.sanitize(msg.snippet, { ALLOWED_TAGS: [] }).replace(/\s+/g, ' ').substring(0, 100) : 'Message body not fetched.',
+                    preview: msg.snippet?.trim() || msg.subject?.substring(0, 100) || 'No preview available',
                     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.from.split('<')[0].trim() || msg.from)}&background=random`,
                     time: new Date(msg.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     date: msg.date,
@@ -185,7 +185,7 @@ export default function MainLayout() {
     if (isBootstrapping) {
         return (
             <div className="flex h-full w-full items-center justify-center bg-slate-50/50 backdrop-blur-sm">
-                <LogoSpinner />
+                <LogoSpinner message="Syncing Inbox..." />
             </div>
         );
     }
