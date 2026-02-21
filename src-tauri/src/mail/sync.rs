@@ -159,6 +159,14 @@ pub async fn sync_inbox(app_handle: &AppHandle, account: Account) -> Result<u32,
             log::info!("Grabbed {} new messages!", num_new);
             database::insert_or_update_messages(&app_handle_clone, &messages)?;
 
+            if num_new > 0 {
+                use tauri::Emitter;
+                if let Err(e) = app_handle_clone.emit("mail:updated", ()) {
+                    log::error!("Failed to emit mail:updated event: {}", e);
+                }
+            }
+
+
             Ok(num_new)
         })();
 

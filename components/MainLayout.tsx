@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ComposeModal from '@/components/ComposeModal';
 import gsap from 'gsap';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import DOMPurify from 'isomorphic-dompurify';
 import { useSync } from '@/components/SyncContext';
 import LogoSpinner from '@/components/LogoSpinner';
@@ -164,6 +165,23 @@ export default function MainLayout() {
 
         loadCache();
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        let unlisten: (() => void) | undefined;
+
+        const setupListener = async () => {
+            unlisten = await listen('mail:updated', async () => {
+                console.log("mail:updated event received, refreshing cache.");
+                await fetchCache();
+            });
+        };
+
+        setupListener();
+
+        return () => {
+            if (unlisten) unlisten();
+        };
     }, []);
 
     useLayoutEffect(() => {
