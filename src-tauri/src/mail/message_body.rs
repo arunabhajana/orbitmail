@@ -12,23 +12,22 @@ use std::collections::HashSet;
 use std::fs;
 use regex::Regex;
 
-struct CidCandidate<'a> {
-    cid: String,
-    part: &'a ParsedMail<'a>,
-    ext: &'static str,
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::OnceLock;
+
+static SESSION_DIR_NAME: OnceLock<String> = OnceLock::new();
+
+fn get_session_dir_name() -> &'static str {
+    SESSION_DIR_NAME.get_or_init(|| {
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        format!("session_{}_{}", now, std::process::id())
+    })
 }
 
-fn ext_from_mime(mime: &str) -> &'static str {
-    match mime {
-        "image/png" => "png",
-        "image/jpeg" => "jpg",
-        "image/jpg" => "jpg",
-        "image/gif" => "gif",
-        "image/webp" => "webp",
-        "image/svg+xml" => "svg",
-        "image/bmp" => "bmp",
-        _ => "bin",
-    }
+struct CidCandidate {
+    cid: String,
+    part_index: usize,
+    mime: String,
 }
 
 fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) -> Result<String, String> {
@@ -38,13 +37,18 @@ fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) 
     let mut best_html: Option<String> = None;
     let mut best_text: Option<String> = None;
     let mut cid_candidates: Vec<CidCandidate> = Vec::new();
+    let mut all_parts: Vec<&ParsedMail> = Vec::new();
 
     fn traverse<'a>(
         part: &'a ParsedMail<'a>, 
+        parts: &mut Vec<&'a ParsedMail<'a>>,
         best_html: &mut Option<String>, 
         best_text: &mut Option<String>,
-        cids: &mut Vec<CidCandidate<'a>>
+        cids: &mut Vec<CidCandidate>
     ) {
+        let current_index = parts.len();
+        parts.push(part);
+
         let is_attachment = part.headers.iter()
             .find(|h| h.get_key().to_lowercase() == "content-disposition")
             .map(|h| h.get_value().to_lowercase().contains("attachment"))
@@ -62,8 +66,8 @@ fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) 
                 
                 cids.push(CidCandidate {
                     cid: cid_val,
-                    part,
-                    ext: ext_from_mime(&ctype),
+                    part_index: current_index,
+                    mime: ctype.clone(),
                 });
             }
         }
@@ -84,12 +88,12 @@ fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) 
             }
         } else {
             for subpart in &part.subparts {
-                traverse(subpart, best_html, best_text, cids);
+                traverse(subpart, parts, best_html, best_text, cids);
             }
         }
     }
 
-    traverse(&parsed, &mut best_html, &mut best_text, &mut cid_candidates);
+    traverse(&parsed, &mut all_parts, &mut best_html, &mut best_text, &mut cid_candidates);
 
     let mut final_html = if let Some(html) = best_html {
         html
@@ -114,28 +118,37 @@ fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) 
 
             if !referenced_cids.is_empty() {
                 if let Ok(cache_dir) = app_handle.path().app_cache_dir() {
-                    let inline_dir = cache_dir.join("orbitmail_inline");
+                    let inline_dir = cache_dir.join("orbitmail_inline").join(get_session_dir_name());
                     let _ = fs::create_dir_all(&inline_dir);
                     
                     for candidate in cid_candidates {
                         if referenced_cids.contains(&candidate.cid) {
+                            let part = all_parts[candidate.part_index];
                             let safe_cid = candidate.cid.replace(|c: char| !c.is_ascii_alphanumeric(), "_");
-                            let file_name = format!("uid_{}_cid_{}.{}", uid, safe_cid, candidate.ext);
+                            let ext = match candidate.mime.as_str() {
+                                "image/png" => "png",
+                                "image/jpeg" => "jpg",
+                                "image/jpg" => "jpg",
+                                "image/gif" => "gif",
+                                "image/webp" => "webp",
+                                _ => "bin",
+                            };
+                            let file_name = format!("uid_{}_cid_{}.{}", uid, safe_cid, ext);
                             let filepath = inline_dir.join(&file_name);
 
                             // Write if missing and under 5MB
                             if !filepath.exists() {
-                                if let Ok(raw_bytes) = candidate.part.get_body_raw() {
+                                if let Ok(raw_bytes) = part.get_body_raw() {
                                     if raw_bytes.len() <= 5 * 1024 * 1024 {
                                         let _ = fs::write(&filepath, raw_bytes);
                                     }
                                 }
                             }
 
-                            // Tauri asset replacement string (requires assetProtocol enable + scope)
+                            // Tauri asset replacement string
                             let asset_url = format!("asset://localhost/{}", filepath.to_string_lossy().replace('\\', "/"));
                             
-                            // String Replace the specific match (regex replacement can be complex if we just want one CID vs another)
+                            // String Rewrite
                             let cid_pattern = format!("cid:{}", candidate.cid);
                             final_html = final_html.replace(&cid_pattern, &asset_url);
                         }
