@@ -17,6 +17,13 @@ pub fn run() {
       {
         if let Some(window) = app.get_webview_window("main") {
           apply_mica(&window, None).ok();
+          
+          window.on_window_event(|event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+              log::info!("App closing: Stopping IMAP IDLE listener...");
+              crate::mail::idle::stop_idle_listener();
+            }
+          });
         }
       }
 

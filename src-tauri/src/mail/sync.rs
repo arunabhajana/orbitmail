@@ -9,6 +9,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 static SYNC_RUNNING: AtomicBool = AtomicBool::new(false);
 
+pub fn is_sync_running() -> bool {
+    SYNC_RUNNING.load(Ordering::SeqCst)
+}
+
 pub async fn sync_inbox(app_handle: &AppHandle, account: Account) -> Result<u32, String> {
     if SYNC_RUNNING.swap(true, Ordering::SeqCst) {
         log::info!("Sync already running, skipping.");

@@ -7,6 +7,7 @@ use tauri::{AppHandle, command};
 pub async fn login_google(app_handle: AppHandle) -> Result<UserProfile, String> {
     let account = oauth::start_google_login().await?;
     session::save_account(&app_handle, account.clone(), true)?;
+    crate::mail::idle::start_idle_listener(app_handle.clone(), account.clone());
     Ok(UserProfile::from(account))
 }
 
@@ -30,7 +31,13 @@ pub fn logout_user(app_handle: AppHandle, account_id: String) -> Result<(), Stri
 
 #[command]
 pub async fn bootstrap_accounts(app_handle: AppHandle) -> Result<crate::auth::bootstrap::BootstrapResult, String> {
-    Ok(crate::auth::bootstrap::bootstrap_accounts(&app_handle).await)
+    let res = crate::auth::bootstrap::bootstrap_accounts(&app_handle).await;
+    if res.user.is_some() {
+        if let Some(account) = session::get_active_account(&app_handle) {
+            crate::mail::idle::start_idle_listener(app_handle.clone(), account);
+        }
+    }
+    Ok(res)
 }
 
 #[command]

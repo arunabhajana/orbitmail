@@ -5,3 +5,4 @@ pub mod sync;
 pub mod message_body;
 pub mod imap_session;
 pub mod body_cache;
+pub mod idle;
