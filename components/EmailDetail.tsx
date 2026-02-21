@@ -16,6 +16,7 @@ import { Email } from '@/lib/data';
 import { motion, AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
 import DOMPurify from 'isomorphic-dompurify';
+import sanitizeHtml from 'sanitize-html';
 
 // --- Types ---
 
@@ -144,6 +145,7 @@ AttachmentCard.displayName = "AttachmentCard";
 const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleStar }) => {
     const [bodyContent, setBodyContent] = React.useState<string>("");
     const [isLoadingBody, setIsLoadingBody] = React.useState<boolean>(false);
+    const [iframeHeight, setIframeHeight] = React.useState<number>(400);
 
     React.useEffect(() => {
         let isMounted = true;
@@ -154,6 +156,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
 
         const fetchBody = async () => {
             setIsLoadingBody(true);
+            setIframeHeight(400); // Reset height on new email
             try {
                 const fetchedBody: string = await invoke('get_message_body', { uid: Number(email.id) });
                 if (isMounted) {
@@ -176,6 +179,17 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
         return () => {
             isMounted = false;
         };
+    }, [email?.id]);
+
+    React.useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data?.type === 'resize' && event.data?.id === email?.id) {
+                setIframeHeight(event.data.height + 30); // Add a small buffer
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
     }, [email?.id]);
 
     if (!email) {
@@ -227,9 +241,48 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
                                 <span className="ml-3 text-sm text-muted-foreground animate-pulse">Fetching message body...</span>
                             </div>
                         ) : (
-                            <article
-                                className="prose prose-slate max-w-none"
-                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(bodyContent, { FORBID_TAGS: ['style', 'script', 'link', 'meta'] }) }}
+                            <iframe
+                                title="Email Content"
+                                className="w-full bg-white border-0 email-content-iframe"
+                                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                                style={{ height: `${iframeHeight}px`, overflow: 'hidden' }}
+                                srcDoc={`
+                                    <!DOCTYPE html>
+                                    <html>
+                                    <head>
+                                        <meta charset="utf-8">
+                                        <meta name="viewport" content="width=device-width, initial-scale=1">
+                                        <style>
+                                            body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; word-break: break-word; }
+                                            img { max-width: 100%; height: auto; }
+                                            a { color: #2563eb; }
+                                        </style>
+                                    </head>
+                                    <body>
+                                        ${DOMPurify.sanitize(
+                                    sanitizeHtml(bodyContent, {
+                                        allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+                                            "img", "table", "tbody", "tr", "td", "th", "style", "head", "meta", "html", "body"
+                                        ]),
+                                        allowedAttributes: {
+                                            a: ["href", "name", "target"],
+                                            img: ["src", "alt", "width", "height"],
+                                            td: ["colspan", "rowspan", "align"],
+                                            "*": ["style"]
+                                        }
+                                    }),
+                                    { FORBID_TAGS: ['script', 'iframe', 'object', 'embed'] }
+                                )}
+                                        <script>
+                                            // Auto-resize iframe height
+                                            window.onload = () => {
+                                                const height = document.body.scrollHeight || document.documentElement.scrollHeight;
+                                                window.parent.postMessage({ type: 'resize', height: height, id: '${email.id}' }, '*');
+                                            };
+                                        </script>
+                                    </body>
+                                    </html>
+                                `}
                             />
                         )}
 

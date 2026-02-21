@@ -23,6 +23,12 @@
     ],
     "security": {
       "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$CACHE/orbitmail_inline/**"
+        ]
+      },
       "capabilities": [
         "default"
       ]

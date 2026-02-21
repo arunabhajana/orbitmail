@@ -28,6 +28,11 @@ pub fn run() {
         )?;
       }
 
+      if let Ok(cache_dir) = app.handle().path().app_cache_dir() {
+        let inline_dir = cache_dir.join("orbitmail_inline");
+        let _ = std::fs::remove_dir_all(&inline_dir);
+      }
+
       crate::mail::database::init_db(app.handle())?;
 
       Ok(())

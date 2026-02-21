@@ -21,7 +21,7 @@ tauri-build = { version = "2.5.4", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.10.0", features = [] }
+tauri = { version = "2.10.0", features = ["protocol-asset"] }
 tauri-plugin-log = "2"
 window-vibrancy = "0.7.1"
 oauth2 = { version = "4.4.2", features = ["reqwest"] }
@@ -37,3 +37,4 @@ base64 = "0.22.1"
 mailparse = "0.16.1"
 rusqlite = { version = "0.38.0", features = ["bundled"] }
 once_cell = "1.21.3"
+regex = "1.12.3"

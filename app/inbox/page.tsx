@@ -69,20 +69,6 @@ export default function InboxPage() {
       )}
 
       <MainLayout />
-
-      {/* Temporary debug list of mailboxes */}
-      {!error && mailboxes.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 max-h-48 overflow-y-auto bg-white/80 backdrop-blur-md border border-black/5 p-4 rounded-xl shadow-xl">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Mailboxes Detected</h3>
-          <ul className="space-y-1">
-            {mailboxes.map((m) => (
-              <li key={m.name} className="text-sm text-slate-600 font-medium">
-                {m.name}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }
