@@ -14,6 +14,7 @@ import { listen } from '@tauri-apps/api/event';
 import DOMPurify from 'isomorphic-dompurify';
 import { useSync } from '@/components/SyncContext';
 import LogoSpinner from '@/components/LogoSpinner';
+import { formatEmailTime } from '@/lib/utils';
 
 export default function MainLayout() {
     const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
@@ -141,7 +142,7 @@ export default function MainLayout() {
                     subject: msg.subject || '(No Subject)',
                     preview: msg.snippet?.trim() || msg.subject?.substring(0, 100) || 'No preview available',
                     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.from.split('<')[0].trim() || msg.from)}&background=random`,
-                    time: new Date(msg.date * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    time: formatEmailTime(msg.date * 1000),
                     date: new Date(msg.date * 1000).toLocaleString(),
                     unread: !msg.seen,
                     folder: "inbox" as const,
@@ -187,7 +188,7 @@ export default function MainLayout() {
                     subject: msg.subject || '(No Subject)',
                     preview: msg.snippet?.trim() || msg.subject?.substring(0, 100) || 'No preview available',
                     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.from.split('<')[0].trim() || msg.from)}&background=random`,
-                    time: new Date(msg.date * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    time: formatEmailTime(msg.date * 1000),
                     date: new Date(msg.date * 1000).toLocaleString(),
                     unread: !msg.seen,
                     folder: "inbox" as const,
@@ -239,7 +240,7 @@ export default function MainLayout() {
                     subject: msg.subject || '(No Subject)',
                     preview: msg.snippet?.trim() || msg.subject?.substring(0, 100) || 'No preview available',
                     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.from.split('<')[0].trim() || msg.from)}&background=random`,
-                    time: new Date(msg.date * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    time: formatEmailTime(msg.date * 1000),
                     date: new Date(msg.date * 1000).toLocaleString(),
                     unread: !msg.seen,
                     folder: "inbox" as const,
