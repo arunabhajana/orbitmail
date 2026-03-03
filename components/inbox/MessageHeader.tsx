@@ -4,8 +4,10 @@ import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { File, Download, FileText, Image as ImageIcon, FileArchive, FileCode, Video, Music, Presentation, Table, FileSpreadsheet, FileAudio, FileVideo, FileType } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { save } from '@tauri-apps/plugin-dialog';
 import { cn } from '@/lib/utils';
 import { Email, Attachment } from '@/lib/types';
+import { useDownloads } from '@/components/DownloadContext';
 
 export const MessageHeader = memo(({ email }: { email: Email }) => (
     <header className="mb-8">
@@ -112,25 +114,47 @@ const getTypeColor = (mime: string | undefined): string => {
 
 export const AttachmentCard = memo(({ uid, attachment }: { uid: number, attachment: Attachment }) => {
     const [isDownloading, setIsDownloading] = React.useState(false);
+    const { addDownload, updateDownloadStatus } = useDownloads();
 
     const handleDownload = async () => {
         setIsDownloading(true);
         try {
-            const path = await invoke('download_attachment', {
+            // Ask user for save location
+            const savePath = await save({
+                defaultPath: attachment.name,
+                title: "Save Attachment",
+            });
+
+            if (!savePath) {
+                // User cancelled the dialog
+                setIsDownloading(false);
+                return;
+            }
+
+            // Register in the global download manager
+            const downloadId = addDownload(attachment.name);
+
+            // Execute backend download
+            // Since imap fetch blocks, we don't have true byte-level progress in NextJS easily.
+            // The context will show "downloading" spinner until the IPC call returns.
+            const resultPath = await invoke<string>('download_attachment', {
                 uid,
                 partId: attachment.partId,
-                filename: attachment.name
+                savePath: savePath // Note: Rust expects `save_path`, Tauri backend automatically camelCases mapping. Wait, let's use `save_path` explicitly or rely on Tauri mapping. Usually tauri maps `savePath` from JS to `save_path` in Rust if `#[tauri::command(rename_all = "camelCase")]` is used globally, or default is camelCase. If it fails, we will check.
             });
-            console.log(`Downloaded to ${path}`);
+            console.log(`Downloaded to ${resultPath}`);
+            updateDownloadStatus(downloadId, 'completed', resultPath);
         } catch (err) {
             console.error("Download failed:", err);
             alert(`Download failed: ${err}`);
+            // If we had the downloadId here, we could mark it as error it, but addDownload might not have fired if dialog failed.
         } finally {
             setIsDownloading(false);
         }
     };
 
     const typeColor = getTypeColor(attachment.type);
+
     const shortType = getShortType(attachment.type);
 
     return (

@@ -2,10 +2,12 @@
 
 
 import { Window as TauriWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, RefreshCw, CheckCircle2 } from "lucide-react";
-import { useEffect, useState, memo } from "react";
+import { Minus, Square, X, RefreshCw, CheckCircle2, Download, AlertCircle, File, FolderOpen } from "lucide-react";
+import { useEffect, useState, memo, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { cn } from "@/lib/utils";
 import { useSync } from "@/components/SyncContext";
+import { useDownloads } from "@/components/DownloadContext";
 import { motion, AnimatePresence } from "framer-motion";
 
 // --- Types & Interfaces ---
@@ -145,6 +147,115 @@ function SyncIndicator() {
     );
 }
 
+/**
+ * Download Manager Popover
+ */
+function DownloadManagerPopover() {
+    const { downloads, activeCount, clearDownloads } = useDownloads();
+    const [isOpen, setIsOpen] = useState(false);
+    const popoverRef = useRef<HTMLDivElement>(null);
+
+    // Close when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
+
+    return (
+        <div ref={popoverRef} className="relative flex items-center h-full mr-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={cn(
+                    "p-1.5 rounded-md transition-colors relative",
+                    "hover:bg-black/5 dark:hover:bg-white/10 text-foreground/70 dark:text-white/70",
+                    isOpen && "bg-black/5 dark:bg-white/10 text-primary"
+                )}
+            >
+                <Download size={14} strokeWidth={2} />
+                {activeCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-primary rounded-full border border-background animate-pulse" />
+                )}
+            </button>
+
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 5, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute top-full right-0 mt-2 w-72 bg-white/70 dark:bg-[#1C1C21]/70 backdrop-blur-2xl rounded-xl shadow-2xl border border-white/40 dark:border-white/5 overflow-hidden z-[100]"
+                    >
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-black/5 dark:border-white/5 bg-white/30 dark:bg-white/5">
+                            <h3 className="text-sm font-semibold text-foreground/70 dark:text-white/70 tracking-tight">Downloads</h3>
+                            {downloads.length > 0 && (
+                                <button
+                                    onClick={clearDownloads}
+                                    className="text-[10px] font-medium text-foreground/50 dark:text-white/40 hover:text-primary dark:hover:text-primary transition-colors"
+                                >
+                                    Clear All
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="max-h-64 overflow-y-auto custom-scrollbar p-2 flex flex-col gap-1">
+                            {downloads.length === 0 ? (
+                                <div className="py-6 text-center text-foreground/40 dark:text-white/30 text-xs flex flex-col items-center gap-2">
+                                    <Download size={20} className="opacity-50" />
+                                    <span>No recent downloads</span>
+                                </div>
+                            ) : (
+                                downloads.map(item => (
+                                    <div key={item.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
+                                        <div className="mt-0.5 shrink-0 bg-primary/10 text-primary p-1.5 rounded-md">
+                                            <File size={14} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold text-foreground/90 dark:text-white/90 truncate">{item.filename}</p>
+                                            <div className="flex items-center gap-1.5 mt-1">
+                                                {item.status === 'downloading' ? (
+                                                    <span className="text-[10px] text-primary animate-pulse font-medium">Downloading...</span>
+                                                ) : item.status === 'completed' ? (
+                                                    <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
+                                                        <CheckCircle2 size={10} /> Saved
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] text-red-500 font-medium flex items-center gap-1">
+                                                        <AlertCircle size={10} /> Failed
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {item.status === 'completed' && item.path && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    invoke('show_in_folder', { path: item.path });
+                                                }}
+                                                className="opacity-0 group-hover:opacity-100 p-1.5 text-foreground/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/10 hover:text-primary dark:hover:text-primary rounded-md transition-all self-center"
+                                                title="Show in folder"
+                                            >
+                                                <FolderOpen size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
 // --- Main Component ---
 
 export default function Titlebar() {
@@ -182,24 +293,27 @@ export default function Titlebar() {
             </div>
 
             {/* Right: Window Controls */}
-            <div className="justify-self-end flex gap-1 px-1">
-                <WindowControl
-                    icon={Minus}
-                    onClick={() => { appWindow?.minimize(); }}
-                    aria-label="Minimize"
-                />
-                <WindowControl
-                    icon={Square}
-                    iconSize={12}
-                    onClick={() => { appWindow?.toggleMaximize(); }}
-                    aria-label="Maximize"
-                />
-                <WindowControl
-                    icon={X}
-                    onClick={() => { appWindow?.close(); }}
-                    className="hover:bg-red-500 hover:text-white"
-                    aria-label="Close"
-                />
+            <div className="justify-self-end flex items-center pr-1">
+                <DownloadManagerPopover />
+                <div className="flex gap-1">
+                    <WindowControl
+                        icon={Minus}
+                        onClick={() => { appWindow?.minimize(); }}
+                        aria-label="Minimize"
+                    />
+                    <WindowControl
+                        icon={Square}
+                        iconSize={12}
+                        onClick={() => { appWindow?.toggleMaximize(); }}
+                        aria-label="Maximize"
+                    />
+                    <WindowControl
+                        icon={X}
+                        onClick={() => { appWindow?.close(); }}
+                        className="hover:bg-red-500 hover:text-white"
+                        aria-label="Close"
+                    />
+                </div>
             </div>
         </header>
     );
