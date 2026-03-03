@@ -85,7 +85,7 @@ pub async fn sync_inbox(app_handle: AppHandle) -> Result<u32, String> {
 }
 
 #[command]
-pub async fn get_message_body(app_handle: AppHandle, uid: u32) -> Result<String, String> {
+pub async fn get_message_body(app_handle: AppHandle, uid: u32) -> Result<crate::mail::message_body::MessageDetail, String> {
     let account = session::get_active_account(&app_handle)
         .ok_or_else(|| "No active account".to_string())?;
 

@@ -1,3 +1,4 @@
+import { Email } from "./types";
 
 export interface User {
   name: string;
@@ -5,27 +6,9 @@ export interface User {
   avatar: string;
 }
 
-export interface Email {
-  id: string;
-  sender: string;
-  senderEmail: string;
-  subject: string;
-  preview: string;
-  avatar: string;
-  time: string;
-  unread: boolean;
-  date: string;
-  folder: "inbox" | "sent" | "drafts" | "trash";
-  tags: string[];
-  starred: boolean;
-  body: string; // HTML content
-  attachments?: { name: string; size: string; type: string }[];
-}
-
 export const CURRENT_USER: User = {
   name: "Arunabha Jana",
   email: "arunabhajana@gmail.com",
-  // Using a placeholder gradient or initial if image fails, but here's a high-quality placeholder
   avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDdiZ7ujUV58y1iBHcNcbPeLlWZ5RH7ErjzTXlEzZ1-7AXIlly7ReiUTLV4rBb5aTg67WXELK_7d2YCaCs5PrHL4YHDas9W5SU6YFEvdzExUvazhF-Fn2hXtfWj-RciAcyhpbiluDPF18G1mbXhLjySXZZ_KAWrXiQ75D-d-1VTPM2r-xruG9rt9YMBnaz_C8d6da2s6B6tP43m9lvbzRVyktdrNeuHDTb9i8qYcoWO5aF7hCrJSQuFtIAgZCZyBBucg6Pg4NRtC-Gd",
 };
 
@@ -43,7 +26,7 @@ export const MOCK_EMAILS: Email[] = [
     folder: 'inbox',
     tags: ['Work'],
     starred: true,
-    attachments: [{ name: "Q4_Design_Specs.fig", size: "24.5 MB", type: "Figma" }],
+    attachments: [{ partId: "1.1", name: "Q4_Design_Specs.fig", size: "24.5 MB", type: "Figma" }],
     body: `
         <p>Hi Team,</p>
         <p>I've just finalized the latest updates for our design system components. This quarter we are focusing heavily on "Spatial UI" principles, which includes our new glassmorphism layer styles and refined shadow depths.</p>
@@ -70,6 +53,7 @@ export const MOCK_EMAILS: Email[] = [
     folder: 'inbox',
     tags: ['Work', 'Dev'],
     starred: false,
+    attachments: [],
     body: `
         <p><strong>v2.4.0</strong> has been released to npm.</p>
         <p>This release includes significant updates to the core styling engine, allowing for dynamic backdrop filters and glassmorphism effects out of the box.</p>
@@ -78,7 +62,7 @@ export const MOCK_EMAILS: Email[] = [
            <li>Feature: Added <code>.glass</code> utility class.</li>
            <li>Fix: Resolved z-index stacking context issues on modal backdrops.</li>
            <li>Chore: Updated peer dependencies.</li>
-        </ul>
+         </ul>
         <p>View the full changelog on the repository.</p>
       `
   },
@@ -95,6 +79,7 @@ export const MOCK_EMAILS: Email[] = [
     folder: 'inbox',
     tags: ['Work'],
     starred: false,
+    attachments: [],
     body: `
         <p>Hey Arunabha,</p>
         <p>The stakeholder meeting went well, but they requested we pull forward the mobile app redesign by two weeks.</p>
@@ -115,6 +100,7 @@ export const MOCK_EMAILS: Email[] = [
     folder: 'inbox',
     tags: ['Personal', 'Design'],
     starred: true,
+    attachments: [],
     body: `
         <p>Here are your weekly top shots from Dribbble:</p>
         <p>1. <strong>Finance Dashboard</strong> by Oleg Frolov</p>
@@ -136,6 +122,7 @@ export const MOCK_EMAILS: Email[] = [
     folder: 'inbox',
     tags: ['Work'],
     starred: false,
+    attachments: [],
     body: `
         <p><strong>Cycle 42 is complete.</strong></p>
         <p>Great work team! We burned down 24 points this cycle. Our velocity is trending up.</p>

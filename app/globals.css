@@ -98,6 +98,16 @@ body {
   --color-muted: #f1f5f9;
   --color-muted-foreground: #64748b;
   --color-border: #e2e8f0;
+  
+  /* Attachment Type Colors */
+  --color-att-excel: #107c10;
+  --color-att-word: #2b579a;
+  --color-att-pdf: #e02424;
+  --color-att-ppt: #d24726;
+  --color-att-video: #7c3aed;
+  --color-att-audio: #d97706;
+  --color-att-code: #6366f1;
+  --color-att-image: #0891b2;
 
   /* Font config */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
@@ -114,4 +124,14 @@ body {
   --color-muted: #27272a;
   --color-muted-foreground: #a1a1aa;
   --color-border: #27272a;
+
+  /* Dark mode variants for better contrast if needed */
+  --color-att-excel: #22c55e;
+  --color-att-word: #3b82f6;
+  --color-att-pdf: #f87171;
+  --color-att-ppt: #fb923c;
+  --color-att-video: #a78bfa;
+  --color-att-audio: #fbbf24;
+  --color-att-code: #818cf8;
+  --color-att-image: #22d3ee;
 }

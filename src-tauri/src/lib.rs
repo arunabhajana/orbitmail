@@ -60,7 +60,8 @@ pub fn run() {
       get_messages_page,
       mark_as_read,
       toggle_star,
-      delete_message
+      delete_message,
+      download_attachment
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

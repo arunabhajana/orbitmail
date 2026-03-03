@@ -37,7 +37,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme === 'dark';
 
-    const { bodyContent, isLoadingBody, iframeHeight } = useEmailBody(
+    const { bodyContent, attachments, isLoadingBody, iframeHeight } = useEmailBody(
         email?.id,
         email?.unread,
         onMarkAsRead
@@ -100,39 +100,39 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
                                 scrolling="no"
                                 style={{ height: `${iframeHeight}px`, overflow: 'hidden' }}
                                 srcDoc={`
-                                    <!DOCTYPE html>
-                                    <html>
-                                    <head>
-                                        <meta charset="utf-8">
-                                        <meta name="viewport" content="width=device-width, initial-scale=1">
-                                        <style>
-                                            html { opacity: 0; }
-                                            html.ready { opacity: 1; }
-                                            html, body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; overflow: hidden; width: 100%; }
-                                            img { max-width: 100%; height: auto; }
-                                            a { color: #2563eb; }
-                                            #email-content-wrapper { display: block; overflow: hidden; }
-                                            
-                                            /* Smart Invert for Dark Mode */
-                                            html.dark-mode {
-                                                filter: invert(1) hue-rotate(180deg) brightness(1.05);
-                                                background-color: #EEEEEE; /* Inverts to ~ #111111 matching the outer pane */
-                                            }
-                                            html.dark-mode img, 
-                                            html.dark-mode video, 
-                                            html.dark-mode picture,
-                                            html.dark-mode svg,
-                                            html.dark-mode [style*="background-image"] {
-                                                filter: invert(1) hue-rotate(180deg);
-                                            }
-                                            html.dark-mode a {
-                                                color: #3b82f6; /* Adjust link color for dark mode */
-                                            }
-                                        </style>
-                                    </head>
-                                    <body>
-                                        <div id="email-content-wrapper">
-                                            ${DOMPurify.sanitize(
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <meta charset="utf-8">
+                                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                                    <style>
+                                        html { opacity: 0; }
+                                        html.ready { opacity: 1; }
+                                        html, body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; overflow: hidden; width: 100%; }
+                                        img { max-width: 100%; height: auto; }
+                                        a { color: #2563eb; }
+                                        #email-content-wrapper { display: block; overflow: hidden; }
+                                        
+                                        /* Smart Invert for Dark Mode */
+                                        html.dark-mode {
+                                            filter: invert(1) hue-rotate(180deg) brightness(1.05);
+                                            background-color: #EEEEEE; /* Inverts to ~ #111111 matching the outer pane */
+                                        }
+                                        html.dark-mode img, 
+                                        html.dark-mode video, 
+                                        html.dark-mode picture,
+                                        html.dark-mode svg,
+                                        html.dark-mode [style*="background-image"] {
+                                            filter: invert(1) hue-rotate(180deg);
+                                        }
+                                        html.dark-mode a {
+                                            color: #3b82f6; /* Adjust link color for dark mode */
+                                        }
+                                    </style>
+                                </head>
+                                <body>
+                                    <div id="email-content-wrapper">
+                                        ${DOMPurify.sanitize(
                                     sanitizeHtml(bodyContent, {
                                         allowedTags: sanitizeHtml.defaults.allowedTags.concat([
                                             "img", "table", "tbody", "tr", "td", "th", "style", "head", "meta", "html", "body"
@@ -146,88 +146,104 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
                                     }),
                                     { FORBID_TAGS: ['script', 'iframe', 'object', 'embed'] }
                                 )}
-                                        </div>
-                                        <script>
-                                            const wrapper = document.getElementById('email-content-wrapper');
-                                            let lastHeight = 0;
+                                    </div>
+                                    <script>
+                                        const wrapper = document.getElementById('email-content-wrapper');
+                                        let lastHeight = 0;
+                                        
+                                        // --- Smart Dark Mode Heuristics ---
+                                        const applySmartInvert = () => {
+                                            if (!${isDark}) return;
                                             
-                                            // --- Smart Dark Mode Heuristics ---
-                                            const applySmartInvert = () => {
-                                                if (!${isDark}) return;
-                                                
-                                                // Function to parse rgb/rgba to check brightness
-                                                const getBrightness = (colorStr) => {
-                                                    const match = colorStr.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/);
-                                                    if (!match) return 255; // default to light if parsing fails
-                                                    const r = parseInt(match[1]);
-                                                    const g = parseInt(match[2]);
-                                                    const b = parseInt(match[3]);
-                                                    // Standard luminance formula
-                                                    return (r * 299 + g * 587 + b * 114) / 1000;
-                                                };
-
-                                                // Check body and wrapper computed backgrounds
-                                                let bodyBg = window.getComputedStyle(document.body).backgroundColor;
-                                                let wrapperBg = window.getComputedStyle(wrapper).backgroundColor;
-                                                
-                                                // If both are transparent/rgba(0,0,0,0), assume it's "white" by default HTML standards
-                                                let isTransparent = (bg) => bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent';
-                                                
-                                                let effectiveBg = 'rgb(255, 255, 255)'; // Default HTML bg
-                                                if (!isTransparent(wrapperBg)) effectiveBg = wrapperBg;
-                                                else if (!isTransparent(bodyBg)) effectiveBg = bodyBg;
-
-                                                const brightness = getBrightness(effectiveBg);
-                                                
-                                                // If the background is light (brightness > 128), invert it!
-                                                // If it's already dark (brightness <= 128), leave it alone because it's a native dark email.
-                                                if (brightness > 128) {
-                                                    document.documentElement.classList.add('dark-mode');
-                                                }
+                                            // Function to parse rgb/rgba to check brightness
+                                            const getBrightness = (colorStr) => {
+                                                const match = colorStr.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/);
+                                                if (!match) return 255; // default to light if parsing fails
+                                                const r = parseInt(match[1]);
+                                                const g = parseInt(match[2]);
+                                                const b = parseInt(match[3]);
+                                                // Standard luminance formula
+                                                return (r * 299 + g * 587 + b * 114) / 1000;
                                             };
-                                            
-                                            // Run IMMEDIATELY as the DOM parses, before images load!
-                                            applySmartInvert();
-                                            document.documentElement.classList.add('ready');
 
-                                            const sendHeight = () => {
-                                                if (!wrapper) return;
-                                                // Only measure the strict wrapper height, ignoring the stretched iframe
-                                                const height = wrapper.scrollHeight;
-                                                
-                                                if (height !== lastHeight) {
-                                                    lastHeight = height;
-                                                    window.parent.postMessage({ type: 'resize', height: height, id: '${email.id}' }, '*');
-                                                }
-                                            };
+                                            // Check body and wrapper computed backgrounds
+                                            let bodyBg = window.getComputedStyle(document.body).backgroundColor;
+                                            let wrapperBg = window.getComputedStyle(wrapper).backgroundColor;
                                             
-                                            window.addEventListener('load', sendHeight);
+                                            // If both are transparent/rgba(0,0,0,0), assume it's "white" by default HTML standards
+                                            let isTransparent = (bg) => bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent';
                                             
-                                            // 1. Observe size changes strictly on wrapper, NOT document.body
-                                            new ResizeObserver(sendHeight).observe(wrapper);
+                                            let effectiveBg = 'rgb(255, 255, 255)'; // Default HTML bg
+                                            if (!isTransparent(wrapperBg)) effectiveBg = wrapperBg;
+                                            else if (!isTransparent(bodyBg)) effectiveBg = bodyBg;
+
+                                            const brightness = getBrightness(effectiveBg);
                                             
-                                            // 2. Observe DOM mutations strictly inside wrapper
-                                            new MutationObserver(sendHeight).observe(wrapper, { 
-                                                childList: true, subtree: true, attributes: true 
-                                            });
+                                            // If the background is light (brightness > 128), invert it!
+                                            // If it's already dark (brightness <= 128), leave it alone because it's a native dark email.
+                                            if (brightness > 128) {
+                                                document.documentElement.classList.add('dark-mode');
+                                            }
+                                        };
+                                        
+                                        // Run IMMEDIATELY as the DOM parses, before images load!
+                                        applySmartInvert();
+                                        document.documentElement.classList.add('ready');
+
+                                        const sendHeight = () => {
+                                            if (!wrapper) return;
+                                            // Only measure the strict wrapper height, ignoring the stretched iframe
+                                            const height = wrapper.scrollHeight;
                                             
-                                            // 3. Aggressive polling for 5 seconds
-                                            let pollCount = 0;
-                                            const pollInterval = setInterval(() => {
-                                                sendHeight();
-                                                pollCount++;
-                                                if (pollCount > 50) clearInterval(pollInterval);
-                                            }, 100);
-                                        </script>
-                                    </body>
-                                    </html>
-                                `}
+                                            if (height !== lastHeight) {
+                                                lastHeight = height;
+                                                window.parent.postMessage({ type: 'resize', height: height, id: '${email.id}' }, '*');
+                                            }
+                                        };
+                                        
+                                        window.addEventListener('load', sendHeight);
+                                        
+                                        // 1. Observe size changes strictly on wrapper, NOT document.body
+                                        new ResizeObserver(sendHeight).observe(wrapper);
+                                        
+                                        // 2. Observe DOM mutations strictly inside wrapper
+                                        new MutationObserver(sendHeight).observe(wrapper, { 
+                                            childList: true, subtree: true, attributes: true 
+                                        });
+                                        
+                                        // 3. Aggressive polling for 5 seconds
+                                        let pollCount = 0;
+                                        const pollInterval = setInterval(() => {
+                                            sendHeight();
+                                            pollCount++;
+                                            if (pollCount > 50) clearInterval(pollInterval);
+                                        }, 100);
+                                    </script>
+                                </body>
+                                </html>
+                            `}
                             />
                         )}
 
-                        {email.attachments?.map((att, i) => (
-                            <AttachmentCard key={i} attachment={att} />
-                        ))}
+                        {attachments.length > 0 && (
+                            <div className="mt-12 pt-8 border-t border-black/5 dark:border-white/5 mb-[10px]">
+                                <div className="flex items-center gap-3 mb-8">
+                                    <div className="w-1.5 h-6 rounded-full bg-primary/40 shadow-[0_0_10px_rgba(var(--color-primary-rgb),0.3)]" />
+                                    <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground/50 dark:text-white/30">
+                                        Attachments ({attachments.length})
+                                    </h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                    {attachments.map((att, i) => (
+                                        <AttachmentCard
+                                            key={att.partId || i}
+                                            uid={Number(email.id)}
+                                            attachment={att}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </motion.div>
                 </AnimatePresence>
             </div>

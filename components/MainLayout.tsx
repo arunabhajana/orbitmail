@@ -1,20 +1,19 @@
 "use client";
 
 import React, { useState, useLayoutEffect, useRef, useEffect } from 'react';
-import Sidebar from '@/components/Sidebar';
-import EmailList from '@/components/EmailList';
-import EmailDetail from '@/components/EmailDetail';
-import { Email } from '@/lib/data';
+import { Email } from '@/lib/types';
+import { formatEmailTime } from '@/lib/utils';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import ComposeModal from '@/components/ComposeModal';
 import gsap from 'gsap';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import DOMPurify from 'isomorphic-dompurify';
 import { useSync } from '@/components/SyncContext';
 import LogoSpinner from '@/components/LogoSpinner';
-import { formatEmailTime } from '@/lib/utils';
+import Sidebar from '@/components/Sidebar';
+import EmailList from '@/components/EmailList';
+import EmailDetail from '@/components/EmailDetail';
 
 export default function MainLayout() {
     const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
@@ -131,25 +130,28 @@ export default function MainLayout() {
         }
     };
 
+    const formatEmailFromMessage = (msg: any): Email => ({
+        id: msg.uid.toString(),
+        sender: msg.from.split('<')[0].trim() || msg.from,
+        senderEmail: msg.from,
+        subject: msg.subject || '(No Subject)',
+        preview: msg.snippet?.trim() || msg.subject?.substring(0, 100) || 'No preview available',
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.from.split('<')[0].trim() || msg.from)}&background=random`,
+        time: formatEmailTime(msg.date * 1000),
+        date: new Date(msg.date * 1000).toLocaleString(),
+        unread: !msg.seen,
+        folder: "inbox",
+        tags: [],
+        starred: msg.flagged,
+        body: msg.snippet || '<p>Message body not fetched in this milestone.</p>',
+        attachments: [],
+    });
+
     const fetchCache = async () => {
         try {
             const cached: any[] = await invoke('get_messages_page', { beforeUid: null, limit: 50 });
             if (cached && cached.length > 0) {
-                const formattedEmails = cached.map((msg, index) => ({
-                    id: msg.uid.toString(),
-                    sender: msg.from.split('<')[0].trim() || msg.from,
-                    senderEmail: msg.from,
-                    subject: msg.subject || '(No Subject)',
-                    preview: msg.snippet?.trim() || msg.subject?.substring(0, 100) || 'No preview available',
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.from.split('<')[0].trim() || msg.from)}&background=random`,
-                    time: formatEmailTime(msg.date * 1000),
-                    date: new Date(msg.date * 1000).toLocaleString(),
-                    unread: !msg.seen,
-                    folder: "inbox" as const,
-                    tags: [],
-                    starred: msg.flagged,
-                    body: msg.snippet || '<p>Message body not fetched in this milestone.</p>',
-                }));
+                const formattedEmails = cached.map(formatEmailFromMessage);
                 setEmails(formattedEmails);
                 setHasMore(cached.length === 50);
                 return true;
@@ -181,21 +183,7 @@ export default function MainLayout() {
             const newMessages = cached.filter(msg => msg.uid > firstUid);
 
             if (newMessages.length > 0) {
-                const formattedEmails = newMessages.map(msg => ({
-                    id: msg.uid.toString(),
-                    sender: msg.from.split('<')[0].trim() || msg.from,
-                    senderEmail: msg.from,
-                    subject: msg.subject || '(No Subject)',
-                    preview: msg.snippet?.trim() || msg.subject?.substring(0, 100) || 'No preview available',
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.from.split('<')[0].trim() || msg.from)}&background=random`,
-                    time: formatEmailTime(msg.date * 1000),
-                    date: new Date(msg.date * 1000).toLocaleString(),
-                    unread: !msg.seen,
-                    folder: "inbox" as const,
-                    tags: [],
-                    starred: msg.flagged,
-                    body: msg.snippet || '<p>Message body not fetched in this milestone.</p>',
-                }));
+                const formattedEmails = newMessages.map(formatEmailFromMessage);
 
                 const previousHeight = emailListContainerRef.current?.scrollHeight || 0;
 
@@ -233,21 +221,7 @@ export default function MainLayout() {
             if (nextBatch.length === 0) {
                 setHasMore(false);
             } else {
-                const formattedEmails = nextBatch.map(msg => ({
-                    id: msg.uid.toString(),
-                    sender: msg.from.split('<')[0].trim() || msg.from,
-                    senderEmail: msg.from,
-                    subject: msg.subject || '(No Subject)',
-                    preview: msg.snippet?.trim() || msg.subject?.substring(0, 100) || 'No preview available',
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.from.split('<')[0].trim() || msg.from)}&background=random`,
-                    time: formatEmailTime(msg.date * 1000),
-                    date: new Date(msg.date * 1000).toLocaleString(),
-                    unread: !msg.seen,
-                    folder: "inbox" as const,
-                    tags: [],
-                    starred: msg.flagged,
-                    body: msg.snippet || '<p>Message body not fetched in this milestone.</p>',
-                }));
+                const formattedEmails = nextBatch.map(formatEmailFromMessage);
                 setEmails(prev => {
                     const existingIds = new Set(prev.map(p => p.id));
                     const uniqueNew = formattedEmails.filter(n => !existingIds.has(n.id));

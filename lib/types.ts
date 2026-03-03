@@ -1,3 +1,10 @@
+export interface Attachment {
+    partId: string;
+    name: string;
+    size: string;
+    type: string;
+}
+
 export interface Email {
     id: string;
     sender: string;
@@ -7,14 +14,12 @@ export interface Email {
     date: string;
     time: string;
     unread: boolean;
-    starred?: boolean;
-    folder: string;
+    starred: boolean;
+    folder: "inbox" | "sent" | "drafts" | "trash" | "starred";
     avatar?: string;
-    attachments?: {
-        name: string;
-        size: string;
-        type: string;
-    }[];
+    body?: string;
+    tags: string[];
+    attachments: Attachment[];
 }
 
 export interface NavItemConfig {

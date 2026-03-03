@@ -1,8 +1,16 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
+import { Attachment } from "@/lib/types";
+
+interface MessageDetail {
+    body: string;
+    attachments: Attachment[];
+}
+
 export function useEmailBody(emailId: string | undefined, emailUnread: boolean | undefined, onMarkAsRead?: (id: string) => void) {
     const [bodyContent, setBodyContent] = useState<string>("");
+    const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [isLoadingBody, setIsLoadingBody] = useState<boolean>(false);
     const [iframeHeight, setIframeHeight] = useState<number>(400);
 
@@ -11,6 +19,7 @@ export function useEmailBody(emailId: string | undefined, emailUnread: boolean |
         let isMounted = true;
         if (!emailId) {
             setBodyContent("");
+            setAttachments([]);
             return;
         }
 
@@ -18,9 +27,10 @@ export function useEmailBody(emailId: string | undefined, emailUnread: boolean |
             setIsLoadingBody(true);
             setIframeHeight(400); // Reset height on new email
             try {
-                const fetchedBody: string = await invoke('get_message_body', { uid: Number(emailId) });
+                const detail: MessageDetail = await invoke('get_message_body', { uid: Number(emailId) });
                 if (isMounted) {
-                    setBodyContent(fetchedBody || "<p>Message has no content.</p>");
+                    setBodyContent(detail.body || "<p>Message has no content.</p>");
+                    setAttachments(detail.attachments || []);
                 }
             } catch (err) {
                 console.error("Failed to load message body:", err);
@@ -31,6 +41,7 @@ export function useEmailBody(emailId: string | undefined, emailUnread: boolean |
                 }
                 if (isMounted) {
                     setBodyContent(`<p class="text-red-500">Error loading message body: ${err}</p>`);
+                    setAttachments([]);
                 }
             } finally {
                 if (isMounted) {
@@ -63,5 +74,5 @@ export function useEmailBody(emailId: string | undefined, emailUnread: boolean |
         return () => window.removeEventListener('message', handleMessage);
     }, [emailId]);
 
-    return { bodyContent, isLoadingBody, iframeHeight };
+    return { bodyContent, attachments, isLoadingBody, iframeHeight };
 }

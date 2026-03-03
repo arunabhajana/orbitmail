@@ -38,6 +38,7 @@ const EmailList: React.FC<EmailListProps> = ({
     selectedEmailId,
     onSelectEmail,
     onToggleStar,
+    onDeleteMessage,
     onSync,
     isSyncing,
     onLoadMore,
@@ -106,6 +107,7 @@ const EmailList: React.FC<EmailListProps> = ({
                                         isSelected={selectedEmailId === email.id}
                                         onSelect={onSelectEmail}
                                         onToggleStar={onToggleStar}
+                                        onDelete={onDeleteMessage}
                                     />
                                 </div>
                             );

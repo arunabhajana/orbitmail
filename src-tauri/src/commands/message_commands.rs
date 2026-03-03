@@ -118,3 +118,42 @@ pub async fn get_messages_page(
 
     Ok(pages)
 }
+
+#[tauri::command]
+pub async fn download_attachment(
+    app_handle: tauri::AppHandle,
+    uid: u32,
+    part_id: String,
+    filename: String,
+) -> Result<String, String> {
+    let account = get_active_account(&app_handle).ok_or("No active account")?;
+    
+    let bytes = crate::mail::message_body::fetch_attachment_part(&account, uid, &part_id).await?;
+    
+    use tauri::Manager;
+    let download_dir = app_handle.path().download_dir()
+        .map_err(|e| format!("Failed to get download directory: {}", e))?;
+    
+    let file_path = download_dir.join(&filename);
+    
+    // Check if file exists and append number if it does
+    let mut final_path = file_path.clone();
+    let mut count = 1;
+    while final_path.exists() {
+        let name = std::path::Path::new(&filename)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let ext = std::path::Path::new(&filename)
+            .extension()
+            .map(|e| format!(".{}", e.to_string_lossy()))
+            .unwrap_or_default();
+        final_path = download_dir.join(format!("{} ({}){}", name, count, ext));
+        count += 1;
+    }
+    
+    std::fs::write(&final_path, bytes)
+        .map_err(|e| format!("Failed to write file: {}", e))?;
+    
+    Ok(final_path.to_string_lossy().to_string())
+}

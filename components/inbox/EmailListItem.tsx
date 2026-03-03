@@ -10,12 +10,14 @@ export const EmailListItem = memo(({
     email,
     isSelected,
     onSelect,
-    onToggleStar
+    onToggleStar,
+    onDelete
 }: {
     email: Email;
     isSelected: boolean;
     onSelect?: (id: string) => void;
     onToggleStar?: (id: string) => void;
+    onDelete?: (id: string) => void;
 }) => {
     const [previewText, setPreviewText] = React.useState(email.preview || "");
     const itemRef = React.useRef<HTMLDivElement>(null);

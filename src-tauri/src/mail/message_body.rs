@@ -26,6 +26,25 @@ fn get_session_dir_name() -> &'static str {
     })
 }
 
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageAttachment {
+    pub part_id: String,
+    pub name: String,
+    pub size: String,
+    #[serde(rename = "type")]
+    pub type_mime: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageDetail {
+    pub body: String,
+    pub attachments: Vec<MessageAttachment>,
+}
+
 struct CidCandidate {
     cid: String,
     part_index: usize,
@@ -36,6 +55,7 @@ struct MimeParts {
     best_html: Option<String>,
     best_text: Option<String>,
     cid_candidates: Vec<CidCandidate>,
+    attachments: Vec<MessageAttachment>,
     all_parts: Vec<Vec<u8>>, // store raw body bytes instead of lifetimes
 }
 
@@ -45,6 +65,7 @@ impl MimeParts {
             best_html: None,
             best_text: None,
             cid_candidates: Vec::new(),
+            attachments: Vec::new(),
             all_parts: Vec::new(),
         }
     }
@@ -168,7 +189,7 @@ fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) 
         let mut parts = MimeParts::new();
         parts.traverse(&parsed);
         
-        let mut html_content = if let Some(html) = parts.best_html.clone() {
+        let html_content = if let Some(html) = parts.best_html.clone() {
             html
         } else if let Some(text) = parts.best_text.clone() {
             let escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
@@ -186,32 +207,93 @@ fn extract_displayable_body(app_handle: &AppHandle, uid: u32, raw_email: &[u8]) 
     Ok(base_html)
 }
 
-fn find_best_part<'a>(bs: &'a BodyStructure<'a>, prefix: &str) -> Option<String> {
+fn format_size(bytes: u32) -> String {
+    if bytes < 1024 {
+        format!("{} B", bytes)
+    } else if bytes < 1024 * 1024 {
+        format!("{:.1} KB", bytes as f64 / 1024.0)
+    } else {
+        format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+    }
+}
+
+fn collect_parts_from_bs<'a>(
+    bs: &'a BodyStructure<'a>,
+    prefix: &str,
+    best_html: &mut Option<String>,
+    best_plain: &mut Option<String>,
+    attachments: &mut Vec<MessageAttachment>
+) {
     match bs {
-        BodyStructure::Text { common, .. } => {
-            let subtype_str = format!("{:?}", common).to_lowercase();
-            if subtype_str.contains("html") || subtype_str.contains("plain") {
-                Some(prefix.to_string())
-            } else {
-                None
+        BodyStructure::Text { common, other, .. } => {
+            let subtype = format!("{:?}", common).to_lowercase();
+            if subtype.contains("html") {
+                if best_html.is_none() { *best_html = Some(prefix.to_string()); }
+            } else if (subtype.contains("plain") || subtype.contains("text")) && best_plain.is_none() {
+                *best_plain = Some(prefix.to_string());
             }
+            // Text parts can also be attachments
+            check_is_attachment(common, other.octets, prefix, attachments);
+        },
+        BodyStructure::Basic { common, other, .. } => {
+            check_is_attachment(common, other.octets, prefix, attachments);
         },
         BodyStructure::Multipart { bodies, .. } => {
-            let mut best: Option<String> = None;
             for (i, part) in bodies.iter().enumerate() {
                 let part_id = if prefix.is_empty() {
                     format!("{}", i + 1)
                 } else {
                     format!("{}.{}", prefix, i + 1)
                 };
-                if let Some(res) = find_best_part(part, &part_id) {
-                    best = Some(res); // Will end up capturing the last HTML/plain part, which matches multipart/alternative precedence
-                }
+                collect_parts_from_bs(part, &part_id, best_html, best_plain, attachments);
             }
-            best
         },
-        _ => None,
+        BodyStructure::Message { common, other, .. } => {
+            check_is_attachment(common, other.octets, prefix, attachments);
+        }
     }
+}
+
+fn check_is_attachment(common: &imap_proto::types::BodyContentCommon, octets: u32, part_id: &str, attachments: &mut Vec<MessageAttachment>) {
+    let mut is_attachment = false;
+    let mut filename = String::new();
+
+    if let Some(disp) = &common.disposition {
+        if disp.ty.to_lowercase() == "attachment" {
+            is_attachment = true;
+        }
+        if let Some(params) = &disp.params {
+            if let Some(f) = params.iter().find(|(k, _)| k.to_lowercase() == "filename").map(|(_, v)| v.to_string()) {
+                filename = f;
+            }
+        }
+    }
+
+    // Fallback to name parameter in Content-Type
+    if filename.is_empty() {
+        if let Some(params) = &common.ty.params {
+            if let Some(n) = params.iter().find(|(k, _)| k.to_lowercase() == "name").map(|(_, v)| v.to_string()) {
+                filename = n;
+            }
+        }
+    }
+
+    if is_attachment || !filename.is_empty() {
+        attachments.push(MessageAttachment {
+            part_id: part_id.to_string(),
+            name: if filename.is_empty() { "unnamed_attachment".to_string() } else { filename },
+            size: format_size(octets),
+            type_mime: format!("{}/{}", common.ty.ty, common.ty.subtype).to_lowercase(),
+        });
+    }
+}
+
+fn _find_best_part<'a>(bs: &'a BodyStructure<'a>, prefix: &str) -> Option<String> {
+    let mut html = None;
+    let mut plain = None;
+    let mut attachments = Vec::new();
+    collect_parts_from_bs(bs, prefix, &mut html, &mut plain, &mut attachments);
+    html.or(plain)
 }
 
 
@@ -250,7 +332,7 @@ fn generate_preview(html: &str) -> String {
     }
 }
 
-pub async fn fetch_and_cache_body_internal(app_handle: &AppHandle, account: &Account, uid: u32) -> Result<String, String> {
+pub async fn fetch_and_cache_body_internal(app_handle: &AppHandle, account: &Account, uid: u32) -> Result<MessageDetail, String> {
     let app_handle_cache = app_handle.clone();
     
     // 1. Check caches in a blocking task
@@ -259,13 +341,13 @@ pub async fn fetch_and_cache_body_internal(app_handle: &AppHandle, account: &Acc
             .unwrap_or_default()
             .ok_or_else(|| "No stored mailbox validity. Resync required.".to_string())?;
 
-        if let Some(mem_body) = crate::mail::body_cache::get_cached_body(uid) {
-            return Ok((Some(mem_body), stored_validity));
-        }
-
-        if let Ok(Some(cached_body)) = database::get_message_body_cache(&app_handle_cache, "INBOX", uid) {
-            crate::mail::body_cache::insert_cached_body(uid, cached_body.clone());
-            return Ok((Some(cached_body), stored_validity));
+        if let Ok(Some((cached_body, attachments_json))) = database::get_message_body_cache(&app_handle_cache, "INBOX", uid) {
+            let attachments = if let Some(json) = attachments_json {
+                serde_json::from_str(&json).unwrap_or_default()
+            } else {
+                Vec::new()
+            };
+            return Ok((Some(MessageDetail { body: cached_body, attachments }), stored_validity));
         }
 
         Ok::<_, String>((None, stored_validity))
@@ -274,13 +356,14 @@ pub async fn fetch_and_cache_body_internal(app_handle: &AppHandle, account: &Acc
     .map_err(|e| format!("Task failed: {}", e))??;
 
     let (cached_opt, _stored_validity) = cache_result;
-    if let Some(body) = cached_opt {
-        return Ok(body);
+    if let Some(detail) = cached_opt {
+        return Ok(detail);
     }
 
     // Prepare variables for the raw fetch payload
-    let mut fetched_target_part = String::new();
-    let mut fetched_full_payload: Vec<u8> = Vec::new();
+    let fetched_target_part = String::new();
+    let fetched_full_payload: Vec<u8> = Vec::new();
+    let fetched_attachments: Vec<MessageAttachment> = Vec::new();
 
     // -- SEMAPHORE ACQUIRE (NETWORK BOUNDARY) --
     let _permit = CONCURRENT_FETCH_LIMIT.clone().acquire_owned().await.map_err(|e| e.to_string())?;
@@ -289,15 +372,17 @@ pub async fn fetch_and_cache_body_internal(app_handle: &AppHandle, account: &Acc
     let imap_result = imap_session::execute_with_session(&account, imap_session::SessionKind::Prefetch, move |session| {
         let mut target_part = String::new();
         let mut full_payload: Vec<u8> = Vec::new();
+        let mut attachments = Vec::new();
         
         let fetch_bs = session.uid_fetch(uid.to_string(), "(BODYSTRUCTURE)")
             .map_err(|e| format!("IMAP fetch_bs error: {}", e))?;
 
         if let Some(msg) = fetch_bs.iter().next() {
             if let Some(bs) = msg.bodystructure() {
-                if let Some(part_id) = find_best_part(bs, "") {
-                    target_part = part_id;
-                }
+                let mut html = None;
+                let mut plain = None;
+                collect_parts_from_bs(bs, "", &mut html, &mut plain, &mut attachments);
+                target_part = html.or(plain).unwrap_or_default();
             }
         }
 
@@ -331,10 +416,10 @@ pub async fn fetch_and_cache_body_internal(app_handle: &AppHandle, account: &Acc
                 }
             }
         }
-        Ok::<_, String>((target_part, full_payload))
+        Ok::<_, String>((target_part, full_payload, attachments))
     }).await;
     
-    let (fetched_target_part, fetched_full_payload) = match imap_result {
+    let (fetched_target_part, fetched_full_payload, fetched_attachments) = match imap_result {
         Ok(data) => data,
         Err(e) => return Err(format!("IMAP Execution Error: {:?}", e)),
     };
@@ -344,29 +429,69 @@ pub async fn fetch_and_cache_body_internal(app_handle: &AppHandle, account: &Acc
     log::debug!("IMAP fetch complete: uid={}", uid);
 
     // -- CPU BOUNDARY (HTML PARSING & DB STORAGE) --
-    if !fetched_full_payload.is_empty() {
+    let parsed_body = if !fetched_full_payload.is_empty() {
         match extract_displayable_body(app_handle, uid, &fetched_full_payload) {
-            Ok(parsed_body) => {
-                let preview = generate_preview(&parsed_body);
-                let _ = database::update_message_body(app_handle, "INBOX", uid, &parsed_body, &preview);
-                crate::mail::body_cache::insert_cached_body(uid, parsed_body.clone());
-                return Ok(parsed_body);
-            }
+            Ok(parsed) => parsed,
             Err(_) => {
                 let fallback = String::from_utf8_lossy(&fetched_full_payload).to_string();
                 let escaped = fallback.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-                let formatted_fallback = format!("<pre style=\"white-space:pre-wrap;font-family:system-ui\">{}</pre>", escaped);
-                let preview = generate_preview(&formatted_fallback);
-                let _ = database::update_message_body(app_handle, "INBOX", uid, &formatted_fallback, &preview);
-                crate::mail::body_cache::insert_cached_body(uid, formatted_fallback.clone());
-                return Ok(formatted_fallback);
+                format!("<pre style=\"white-space:pre-wrap;font-family:system-ui\">{}</pre>", escaped)
             }
         }
-    }
+    } else {
+        return Err("Could not retrieve message body.".to_string());
+    };
 
-    Err("Could not retrieve message body.".to_string())
+    let preview = generate_preview(&parsed_body);
+    let attachments_json = serde_json::to_string(&fetched_attachments).ok();
+    
+    let _ = database::update_message_body(app_handle, "INBOX", uid, &parsed_body, &preview, attachments_json);
+    
+    Ok(MessageDetail {
+        body: parsed_body,
+        attachments: fetched_attachments,
+    })
 }
 
-pub async fn get_message_body(app_handle: &AppHandle, account: Account, uid: u32) -> Result<String, String> {
+pub async fn get_message_body(app_handle: &AppHandle, account: Account, uid: u32) -> Result<MessageDetail, String> {
     fetch_and_cache_body_internal(app_handle, &account, uid).await
+}
+
+pub async fn fetch_attachment_part(account: &Account, uid: u32, part_id: &str) -> Result<Vec<u8>, String> {
+    let part_id_clone = part_id.to_string();
+    
+    // -- SEMAPHORE ACQUIRE --
+    let _permit = CONCURRENT_FETCH_LIMIT.clone().acquire_owned().await.map_err(|e| e.to_string())?;
+    
+    let imap_result = imap_session::execute_with_session(account, imap_session::SessionKind::Primary, move |session| {
+        let mime_query = format!("BODY.PEEK[{}.MIME]", part_id_clone);
+        let body_query = format!("BODY.PEEK[{}]", part_id_clone);
+        let fetch_query = format!("({})", [mime_query, body_query].join(" "));
+
+        log::debug!("Fetching attachment: UID {}, Part {}", uid, part_id_clone);
+        let fetch_results = session.uid_fetch(uid.to_string(), &fetch_query)
+            .map_err(|e| format!("IMAP fetch attachment error: {}", e))?;
+
+        if let Some(msg) = fetch_results.iter().next() {
+            let mut full_part = Vec::new();
+            
+            let parts: Vec<u32> = part_id_clone.split('.').filter_map(|s| s.parse().ok()).collect();
+            let section_path = imap_proto::types::SectionPath::Part(parts.clone(), None);
+            let mime_path = imap_proto::types::SectionPath::Part(parts, Some(imap_proto::types::MessageSection::Mime));
+            
+            if let Some(m) = msg.section(&mime_path) { full_part.extend_from_slice(m); }
+            // Add a newline between MIME and body if not present, though mailparse usually handles it
+            full_part.extend_from_slice(b"\r\n");
+            if let Some(b) = msg.section(&section_path) { full_part.extend_from_slice(b); }
+
+            if !full_part.is_empty() {
+                if let Ok(parsed) = mailparse::parse_mail(&full_part) {
+                    return parsed.get_body_raw().map_err(|e| format!("Decoding error: {}", e));
+                }
+            }
+        }
+        Err("Could not retrieve attachment part.".to_string())
+    }).await;
+
+    imap_result
 }
