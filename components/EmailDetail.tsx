@@ -233,7 +233,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
                                         Attachments ({attachments.length})
                                     </h3>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
                                     {attachments.map((att, i) => (
                                         <AttachmentCard
                                             key={att.partId || i}

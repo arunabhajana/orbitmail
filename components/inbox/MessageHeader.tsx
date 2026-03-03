@@ -185,7 +185,7 @@ export const AttachmentCard = memo(({ uid, attachment }: { uid: number, attachme
                 >
                     {attachment.name}
                 </p>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-wrap items-center gap-2 mt-1 min-w-0">
                     <div className={cn(
                         "px-1.5 py-0.5 rounded-md text-[9px] font-black tracking-widest uppercase",
                         "bg-primary/10 text-primary",
