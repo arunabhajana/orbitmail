@@ -60,12 +60,13 @@ export default function LogoSpinner({ message = "Syncing inbox..." }: { message?
         <div className="flex flex-col items-center justify-center gap-8 p-8">
             <div className="relative flex items-center justify-center">
                 {/* Subtle outer pulse */}
-                <div className="absolute inset-[-30%] rounded-full animate-ping opacity-20 bg-gradient-to-tr from-blue-500 to-purple-500 duration-1000"></div>
+                <div className="absolute inset-[-30%] rounded-full animate-ping opacity-20 dark:opacity-10 bg-gradient-to-tr from-primary to-purple-500 duration-1000"></div>
 
                 <svg ref={svgRef} className="w-24 h-24 relative z-10 drop-shadow-2xl" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <linearGradient id="spinner-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#2563eb" />
+                            {/* Uses primary accent color natively but falls back to nice defaults */}
+                            <stop offset="0%" stopColor="rgb(var(--color-primary-rgb, 37 99 235))" />
                             <stop offset="50%" stopColor="#7c3aed" />
                             <stop offset="100%" stopColor="#db2777" />
                         </linearGradient>
@@ -84,7 +85,7 @@ export default function LogoSpinner({ message = "Syncing inbox..." }: { message?
                     />
                 </svg>
             </div>
-            <p ref={textRef} className="text-slate-600 font-medium tracking-wide text-lg">
+            <p ref={textRef} className="text-muted-foreground/80 dark:text-white/60 font-medium tracking-wide text-sm">
                 {message}
             </p>
         </div>
