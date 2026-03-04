@@ -153,3 +153,13 @@ pub async fn show_in_folder(path: String) -> Result<(), String> {
     }
     Ok(())
 }
+
+#[tauri::command]
+pub fn show_main_window(app_handle: AppHandle) -> Result<(), String> {
+    if let Some(window) = tauri::Manager::get_webview_window(&app_handle, "main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+    Ok(())
+}
+

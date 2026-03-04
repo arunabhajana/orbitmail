@@ -97,7 +97,7 @@ pub fn start_idle_listener(app_handle: AppHandle, account: Account) {
 
 async fn run_idle_loop(
     app_handle: &AppHandle,
-    account: &Account,
+    _account: &Account,
     tx: mpsc::Sender<u32>,
     mut last_exists: u32,
 ) -> Result<u32, String> {

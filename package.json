@@ -13,6 +13,7 @@
     "@tanstack/react-virtual": "^3.13.19",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-notification": "^2.3.3",
     "@types/sanitize-html": "^2.16.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

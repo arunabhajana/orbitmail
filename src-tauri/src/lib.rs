@@ -38,6 +38,7 @@ pub fn run() {
       }
       
       app.handle().plugin(tauri_plugin_dialog::init())?;
+      app.handle().plugin(tauri_plugin_notification::init())?;
 
       if let Ok(cache_dir) = app.handle().path().app_cache_dir() {
         let inline_dir = cache_dir.join("orbitmail_inline");
@@ -64,7 +65,8 @@ pub fn run() {
       toggle_star,
       delete_message,
       download_attachment,
-      show_in_folder
+      show_in_folder,
+      show_main_window
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

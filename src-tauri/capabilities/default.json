@@ -12,6 +12,11 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-start-dragging",
     "dialog:default",
-    "dialog:allow-save"
+    "dialog:allow-save",
+    "notification:default",
+    "notification:allow-notify",
+    "notification:allow-request-permission",
+    "notification:allow-register-action-types",
+    "notification:allow-register-listener"
   ]
 }

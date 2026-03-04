@@ -2,6 +2,7 @@ use crate::auth::account::Account;
 use crate::mail::message_list::MessageHeader;
 use crate::mail::database;
 use crate::mail::prefetch;
+use crate::mail::notifications;
 use mailparse::parse_mail;
 use native_tls::TlsConnector;
 use tauri::AppHandle;
@@ -130,6 +131,13 @@ pub async fn sync_inbox(app_handle: &AppHandle, account: Account) -> Result<u32,
                 use tauri::Emitter;
                 if let Err(e) = app_handle_clone.emit("mail:updated", ()) {
                     log::error!("Failed to emit mail:updated event: {}", e);
+                }
+
+                // --- SHOW NOTIFICATIONS ---
+                if !is_bootstrap {
+                    for msg in &messages {
+                        notifications::show_new_email_notification(&app_handle_clone, &msg.from, &msg.subject, msg.uid);
+                    }
                 }
             }
 

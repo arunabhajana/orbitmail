@@ -9,6 +9,7 @@ import ComposeModal from '@/components/ComposeModal';
 import gsap from 'gsap';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { isPermissionGranted, requestPermission, onAction, registerActionTypes } from '@tauri-apps/plugin-notification';
 import { useSync } from '@/components/SyncContext';
 import LogoSpinner from '@/components/LogoSpinner';
 import Sidebar from '@/components/Sidebar';
@@ -358,6 +359,57 @@ export default function MainLayout() {
 
         return () => {
             if (unlisten) unlisten();
+        };
+    }, []);
+
+    // --- Notification Permissions & Logic ---
+    useEffect(() => {
+        const setupNotifications = async () => {
+            try {
+                let permissionGranted = await isPermissionGranted();
+                if (!permissionGranted) {
+                    const permission = await requestPermission();
+                    permissionGranted = permission === 'granted';
+                }
+
+                if (permissionGranted) {
+                    console.log("Notification permission granted");
+
+                    // Listen for notification clicks
+                    try {
+                        const unlisten = await onAction((result: any) => {
+                            console.log('Notification action:', result);
+
+                            // Handle 'Open' action or general click
+                            const uid = result.notification?.extra?.uid;
+                            if (uid) {
+                                setSelectedEmailId(uid);
+                            }
+
+                            // Focus the window
+                            invoke('show_main_window').catch(console.error);
+                        });
+                        return unlisten;
+                    } catch (e: any) {
+                        if (e?.includes?.("registerListener not allowed") || e?.includes?.("not found")) {
+                            console.info("Notification clicks are not currently supported by Tauri on this desktop OS.");
+                        } else {
+                            console.error("Failed to setup notification action listener:", e);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to setup notifications:", error);
+            }
+        };
+
+        const listenerPromise = setupNotifications();
+        return () => {
+            listenerPromise.then(listener => {
+                if (listener && typeof listener.unregister === 'function') {
+                    listener.unregister();
+                }
+            });
         };
     }, []);
 
