@@ -20,6 +20,7 @@ import { useTheme } from 'next-themes';
 import { DetailToolbar } from './inbox/DetailToolbar';
 import { MessageHeader, AttachmentCard } from './inbox/MessageHeader';
 import { useEmailBody } from '@/hooks/useEmailBody';
+import OrbitLoader from './inbox/OrbitLoader';
 
 // --- Types ---
 
@@ -88,9 +89,11 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ className, email, onToggleSta
                         <MessageHeader email={email} />
 
                         {isLoadingBody ? (
-                            <div className="flex h-32 items-center justify-center">
-                                <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
-                                <span className="ml-3 text-sm text-muted-foreground animate-pulse">Fetching message body...</span>
+                            <div className="flex flex-col h-[60vh] items-center justify-center">
+                                <OrbitLoader
+                                    message="Receiving transmission..."
+                                    size="md"
+                                />
                             </div>
                         ) : (
                             <iframe

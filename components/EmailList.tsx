@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SearchBar, FilterTabs } from './inbox/EmailListHeader';
 import { EmailListItem } from './inbox/EmailListItem';
 import { useVirtualEmailList } from '@/hooks/useVirtualEmailList';
+import OrbitLoader from './inbox/OrbitLoader';
 
 // Global cache states removed as predictive prefetch happens in Rust backend now
 
@@ -116,8 +117,8 @@ const EmailList: React.FC<EmailListProps> = ({
                 </div>
                 {/* Loader showing below the items if loading more */}
                 {hasMore && isLoadingMore && (
-                    <div className="h-8 w-full flex justify-center items-center shrink-0">
-                        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    <div className="py-6 w-full flex justify-center items-center shrink-0">
+                        <OrbitLoader size="sm" message="" />
                     </div>
                 )}
             </div>
