@@ -20,9 +20,13 @@ pub async fn bootstrap_accounts(app_handle: &AppHandle) -> BootstrapResult {
         let current_time = Utc::now().timestamp();
         
         if account.expires_at <= current_time && !account.refresh_token.is_empty() {
-            // Attempt to refresh the token
-            dotenvy::dotenv().ok();
-            if let (Ok(client_id), Ok(client_secret)) = (std::env::var("GOOGLE_CLIENT_ID"), std::env::var("GOOGLE_CLIENT_SECRET")) {
+            // Use credentials baked in at compile time via build.rs.
+            // In production there is no .env file on disk, so dotenvy/std::env::var
+            // would silently fail and the refresh block would be skipped entirely,
+            // leaving the expired token in place and killing sync after ~1 hour.
+            let client_id = env!("GOOGLE_CLIENT_ID");
+            let client_secret = env!("GOOGLE_CLIENT_SECRET");
+            {
                 let http_client = Client::new();
                 let payload = format!(
                     "client_id={}&client_secret={}&refresh_token={}&grant_type=refresh_token",
@@ -46,6 +50,8 @@ pub async fn bootstrap_accounts(app_handle: &AppHandle) -> BootstrapResult {
 
                             // Persist the refreshed account
                             let _ = session::save_account(app_handle, account.clone(), true);
+                        } else {
+                            log::error!("Token refresh failed: {}", json);
                         }
                     }
                 }

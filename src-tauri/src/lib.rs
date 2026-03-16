@@ -29,13 +29,23 @@ pub fn run() {
         }
       }
 
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
+      // Always register logging — in dev logs go to stdout,
+      // in release they go to the OS app log directory so production failures are diagnosable.
+      #[cfg(debug_assertions)]
+      app.handle().plugin(
+        tauri_plugin_log::Builder::default()
+          .level(log::LevelFilter::Info)
+          .build(),
+      )?;
+
+      #[cfg(not(debug_assertions))]
+      app.handle().plugin(
+        tauri_plugin_log::Builder::default()
+          .level(log::LevelFilter::Info)
+          .target(tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir { file_name: Some("orbitmail".into()) }))
+          .build(),
+      )?;
+
       
       app.handle().plugin(tauri_plugin_dialog::init())?;
       app.handle().plugin(tauri_plugin_notification::init())?;
