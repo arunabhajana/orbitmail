@@ -16,6 +16,8 @@ interface AuthContextType {
     loading: boolean;
     mailboxLoading: boolean;
     setMailboxLoading: (loading: boolean) => void;
+    mailboxConnected: boolean;
+    setMailboxConnected: (connected: boolean) => void;
     isBootstrappingInbox: boolean;
     setBootstrappingInbox: (bootstrap: boolean) => void;
     needsRefresh: boolean;
@@ -35,6 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [loading, setLoading] = useState(true);
     const [needsRefresh, setNeedsRefresh] = useState(false);
     const [mailboxLoading, setMailboxLoading] = useState(false);
+    const [mailboxConnected, setMailboxConnected] = useState(false);
     const [isBootstrappingInbox, setBootstrappingInbox] = useState(false);
     const router = useRouter();
 
@@ -130,6 +133,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 loading,
                 mailboxLoading,
                 setMailboxLoading,
+                mailboxConnected,
+                setMailboxConnected,
                 isBootstrappingInbox,
                 setBootstrappingInbox,
                 needsRefresh,

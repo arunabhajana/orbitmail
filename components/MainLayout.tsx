@@ -445,7 +445,8 @@ export default function MainLayout() {
 
     if (isBootstrapping) {
         return (
-            <div className="flex h-full w-full items-center justify-center bg-slate-50/50 backdrop-blur-sm">
+            <div className="h-screen w-screen flex items-center justify-center bg-[#F8F9FA]/80 dark:bg-[#09090b]/80 backdrop-blur-xl transition-colors">
+
                 <LogoSpinner message="Syncing Inbox..." />
             </div>
         );
