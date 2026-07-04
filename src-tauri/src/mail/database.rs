@@ -1109,6 +1109,27 @@ pub fn upsert_tags(app_handle: &AppHandle, tags: &[Tag]) -> Result<(), String> {
     Ok(())
 }
 
+pub fn delete_missing_tags(app_handle: &AppHandle, account_id: &str, keep_ids: &[String]) -> Result<(), String> {
+    let db_path = get_db_path(app_handle)?;
+    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    
+    if keep_ids.is_empty() {
+        conn.execute("DELETE FROM tags WHERE account_id = ?", rusqlite::params![account_id]).map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    let placeholders: String = keep_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql = format!("DELETE FROM tags WHERE account_id = ? AND id NOT IN ({})", placeholders);
+    
+    let mut params: Vec<&dyn rusqlite::ToSql> = vec![&account_id];
+    for id in keep_ids {
+        params.push(id);
+    }
+    
+    conn.execute(&sql, rusqlite::params_from_iter(params)).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn get_all_tags(app_handle: &AppHandle, account_id: &str) -> Result<Vec<Tag>, String> {
     let db_path = get_db_path(app_handle)?;
     let conn = Connection::open(db_path).map_err(|e| e.to_string())?;

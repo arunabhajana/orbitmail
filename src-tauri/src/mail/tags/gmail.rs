@@ -18,7 +18,7 @@ struct GmailLabel {
     id: String,
     name: String,
     #[serde(rename = "type")]
-    label_type: String, // "system" or "user"
+    label_type: Option<String>, // "system" or "user"
     color: Option<GmailColor>,
 }
 
@@ -55,7 +55,7 @@ pub async fn sync_tags(app_handle: &AppHandle, account: &Account) -> Result<(), 
             account_id: account.id.clone(),
             id: label.id,
             name: label.name,
-            tag_type: label.label_type.to_lowercase(),
+            tag_type: label.label_type.unwrap_or_else(|| "user".to_string()).to_lowercase(),
             bg_color: label.color.as_ref().map(|c| c.bg_color.clone()),
             text_color: label.color.as_ref().map(|c| c.text_color.clone()),
             provider: "google".to_string(),
@@ -64,6 +64,9 @@ pub async fn sync_tags(app_handle: &AppHandle, account: &Account) -> Result<(), 
     }
 
     database::upsert_tags(app_handle, &db_tags)?;
+
+    let remote_ids: Vec<String> = db_tags.into_iter().map(|t| t.id).collect();
+    database::delete_missing_tags(app_handle, &account.id, &remote_ids)?;
 
     use tauri::Emitter;
     let _ = app_handle.emit("mail:tags_updated", ());
@@ -231,6 +234,69 @@ pub async fn update_tag_color(app_handle: &AppHandle, account: &Account, tag_id:
         "UPDATE tags SET bg_color = ?1, text_color = ?2 WHERE account_id = ?3 AND id = ?4",
         rusqlite::params![bg_color, text_color, account.id, tag_id],
     ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+pub async fn create_tag(
+    app_handle: &AppHandle,
+    account: &Account,
+    name: &str,
+    bg_color: Option<&str>,
+    text_color: Option<&str>,
+) -> Result<(), String> {
+    log::info!("Creating Gmail label for account {}, name {}", account.id, name);
+    let client = Client::new();
+    
+    let mut payload = serde_json::json!({
+        "name": name,
+        "labelListVisibility": "labelShow",
+        "messageListVisibility": "show"
+    });
+
+    if let (Some(bg), Some(txt)) = (bg_color, text_color) {
+        payload["color"] = serde_json::json!({
+            "backgroundColor": bg,
+            "textColor": txt
+        });
+    }
+
+    let url = "https://gmail.googleapis.com/gmail/v1/users/me/labels";
+    let res = client
+        .post(url)
+        .bearer_auth(&account.access_token)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Gmail API Error: {}", e))?;
+
+    if !res.status().is_success() {
+        let err = res.text().await.unwrap_or_default();
+        return Err(format!("Gmail API returned error creating label: {}", err));
+    }
+
+    let label: GmailLabel = res.json().await.map_err(|e| e.to_string())?;
+    
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+
+    let db_tag = Tag {
+        account_id: account.id.clone(),
+        id: label.id,
+        name: label.name,
+        tag_type: label.label_type.unwrap_or_else(|| "user".to_string()).to_lowercase(),
+        bg_color: label.color.as_ref().map(|c| c.bg_color.clone()),
+        text_color: label.color.as_ref().map(|c| c.text_color.clone()),
+        provider: "google".to_string(),
+        updated_at: now,
+    };
+
+    database::upsert_tags(app_handle, &[db_tag])?;
+    
+    use tauri::Emitter;
+    let _ = app_handle.emit("mail:tags_updated", ());
 
     Ok(())
 }

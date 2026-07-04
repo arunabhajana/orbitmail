@@ -18,7 +18,7 @@ import EmailList from '@/components/EmailList';
 import EmailDetail from '@/components/EmailDetail';
 import { usePendingSentMessages } from '@/hooks/usePendingSentMessages';
 import { SearchProgressData } from '@/components/inbox/EmailListHeader';
-
+import { CreateTagModal } from '@/components/tags/CreateTagModal';
 interface FolderSearchState {
     searchQuery: string;
     activeSearchId: string | null;
@@ -31,6 +31,8 @@ interface FolderSearchState {
 export default function MainLayout() {
     const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
     const [isComposeOpen, setIsComposeOpen] = useState(false);
+    const [composeMinimizeSignal, setComposeMinimizeSignal] = useState(0);
+    const [isCreateTagOpen, setIsCreateTagOpen] = useState(false);
 
     // --- New State for Folders & Stars ---
     const [currentFolder, setCurrentFolder] = useState<string>("inbox");
@@ -986,6 +988,10 @@ export default function MainLayout() {
             <Sidebar
                 className="sidebar-anim w-64 flex flex-col shrink-0"
                 onCompose={() => setIsComposeOpen(true)}
+                onCreateTagClick={() => {
+                    setIsCreateTagOpen(true);
+                    setComposeMinimizeSignal(s => s + 1);
+                }}
                 currentFolder={currentFolder}
                 onFolderSelect={setCurrentFolder}
                 unreadCounts={unreadCounts}
@@ -1056,11 +1062,21 @@ export default function MainLayout() {
                 {isComposeOpen && (
                     <ComposeModal 
                         onClose={() => setIsComposeOpen(false)} 
+                        minimizeSignal={composeMinimizeSignal}
                         onSendStart={addPendingMessage}
                         onSendSuccess={(id, messageId) => {
                             updatePendingToSyncing(id, messageId);
                             invoke("sync_mail_folder", { folder: "sent" }).catch(console.error);
                         }}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Create Tag Modal */}
+            <AnimatePresence>
+                {isCreateTagOpen && (
+                    <CreateTagModal 
+                        onClose={() => setIsCreateTagOpen(false)} 
                     />
                 )}
             </AnimatePresence>

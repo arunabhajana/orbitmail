@@ -39,3 +39,16 @@ pub async fn update_tag_color(
         _ => Err("Provider does not support setting tag colors".to_string()),
     }
 }
+
+pub async fn create_tag(
+    app_handle: &AppHandle,
+    account: &Account,
+    name: &str,
+    bg_color: Option<&str>,
+    text_color: Option<&str>,
+) -> Result<(), String> {
+    match account.provider {
+        MailProvider::Google => gmail::create_tag(app_handle, account, name, bg_color, text_color).await,
+        _ => Err("Provider does not support creating tags yet".to_string()),
+    }
+}

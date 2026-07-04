@@ -49,6 +49,7 @@ interface ComposeModalProps {
   onClose: () => void;
   onSendStart?: (pending: PendingSentMessage) => void;
   onSendSuccess?: (id: string, messageId: string) => void;
+  minimizeSignal?: number;
 }
 
 export interface AttachmentFile {
@@ -349,7 +350,7 @@ function LinkDialog({ open, initialUrl, isEditing, onConfirm, onCancel }: LinkDi
 export type ComposeWindowState = "normal" | "maximized" | "minimized" | "hidden";
 export type ComposeStatus = "draft" | "sending" | "sent" | "failed";
 
-export default function ComposeModal({ onClose, onSendStart, onSendSuccess }: ComposeModalProps) {
+export default function ComposeModal({ onClose, onSendStart, onSendSuccess, minimizeSignal = 0 }: ComposeModalProps) {
   const [subject, setSubject] = useState("");
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const attachmentsRef = useRef(attachments);
@@ -368,6 +369,12 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess }: Co
   }, [composeWindowState]);
 
   const [composeStatus, setComposeStatus] = useState<ComposeStatus>("draft");
+
+  useEffect(() => {
+    if (minimizeSignal > 0) {
+      setComposeWindowState("minimized");
+    }
+  }, [minimizeSignal]);
   const [dockPosition] = useState("bottom-right");
 
   const [toast, setToast] = useState<{ message: string; id: number } | null>(null);

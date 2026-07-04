@@ -20,12 +20,14 @@ import { UserProfile } from "./sidebar/UserProfile";
 import { NavItem, TagItem } from "./sidebar/SidebarNavItem";
 import { NavItemConfig, Tag } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
+import { Plus } from "lucide-react";
 
 // --- Types ---
 
 interface SidebarProps {
     className?: string;
     onCompose: () => void;
+    onCreateTagClick?: () => void;
     currentFolder?: string;
     onFolderSelect?: (folder: string) => void;
     unreadCounts?: Record<string, number>;
@@ -41,7 +43,7 @@ const NAV_ITEMS: NavItemConfig[] = [
     { icon: Trash2, label: "Trash", id: "trash" },
 ];
 
-const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, currentFolder, onFolderSelect, unreadCounts }) => {
+const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, onCreateTagClick, currentFolder, onFolderSelect, unreadCounts }) => {
     const [tags, setTags] = useState<Tag[]>([]);
 
     React.useEffect(() => {
@@ -88,9 +90,18 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, currentFolder, 
 
                     {/* 3. Tags Section */}
                     <div className="mt-6">
-                        <h3 className="px-4 text-xs font-semibold text-muted-foreground/50 dark:text-white/40 uppercase tracking-wider mb-2">
-                            Tags
-                        </h3>
+                        <div className="flex items-center justify-between px-4 mb-2 group">
+                            <h3 className="text-xs font-semibold text-muted-foreground/50 dark:text-white/40 uppercase tracking-wider">
+                                Tags
+                            </h3>
+                            <button
+                                onClick={onCreateTagClick}
+                                className="p-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white rounded hover:bg-black/5 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all"
+                                title="Create new tag"
+                            >
+                                <Plus className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
                         <div className="space-y-1">
                             {tags.filter(t => t.tag_type === 'user').map((item) => (
                                 <TagItem 
