@@ -7,7 +7,7 @@ use crate::BootError;
 pub async fn mark_as_read(app_handle: AppHandle, uid: u32, folder: Option<String>) -> Result<(), String> {
     log::info!("mark_as_read command invoked for UID {}", uid);
     let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
-    let folder_str = folder.map(|f| f.to_lowercase()).unwrap_or_else(|| "inbox".to_string());
+    let folder_str = folder.map(|f| if f.to_lowercase().starts_with("tag:") { f } else { f.to_lowercase() }).unwrap_or_else(|| "inbox".to_string());
 
     // Idempotency Check: Don't hit IMAP if already updated locally
     let is_already_seen = tokio::task::spawn_blocking({
@@ -65,7 +65,7 @@ pub async fn mark_as_read(app_handle: AppHandle, uid: u32, folder: Option<String
 #[tauri::command]
 pub async fn toggle_read(app_handle: AppHandle, uid: u32, should_read: bool, folder: Option<String>) -> Result<(), String> {
     let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
-    let folder_str = folder.map(|f| f.to_lowercase()).unwrap_or_else(|| "inbox".to_string());
+    let folder_str = folder.map(|f| if f.to_lowercase().starts_with("tag:") { f } else { f.to_lowercase() }).unwrap_or_else(|| "inbox".to_string());
 
     let app_handle_clone = app_handle.clone();
     if folder_str != "inbox" {
@@ -103,7 +103,7 @@ pub async fn toggle_read(app_handle: AppHandle, uid: u32, should_read: bool, fol
 #[tauri::command]
 pub async fn toggle_star(app_handle: AppHandle, uid: u32, should_star: bool, folder: Option<String>) -> Result<(), String> {
     let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
-    let folder_str = folder.map(|f| f.to_lowercase()).unwrap_or_else(|| "inbox".to_string());
+    let folder_str = folder.map(|f| if f.to_lowercase().starts_with("tag:") { f } else { f.to_lowercase() }).unwrap_or_else(|| "inbox".to_string());
 
     if folder_str != "inbox" {
         let _ = tokio::task::spawn_blocking(move || {
@@ -136,7 +136,7 @@ pub async fn toggle_star(app_handle: AppHandle, uid: u32, should_star: bool, fol
 #[tauri::command]
 pub async fn delete_message(app_handle: AppHandle, uid: u32, folder: Option<String>) -> Result<(), String> {
     let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
-    let folder_str = folder.map(|f| f.to_lowercase()).unwrap_or_else(|| "inbox".to_string());
+    let folder_str = folder.map(|f| if f.to_lowercase().starts_with("tag:") { f } else { f.to_lowercase() }).unwrap_or_else(|| "inbox".to_string());
 
     let app_handle_clone = app_handle.clone();
     if folder_str != "inbox" {
@@ -189,7 +189,7 @@ pub async fn get_messages_page(
     limit: u32,
 ) -> Result<Vec<crate::mail::message_list::MessageHeader>, String> {
     let safe_limit = limit.min(100);
-    let folder = folder.to_lowercase();
+    let folder = if folder.to_lowercase().starts_with("tag:") { folder } else { folder.to_lowercase() };
     
     let app_handle_clone = app_handle.clone();
     let folder_clone = folder.clone();
@@ -256,7 +256,7 @@ pub async fn download_attachment(
     save_path: String,
 ) -> Result<String, String> {
     let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
-    let folder = folder.to_lowercase();
+    let folder = if folder.to_lowercase().starts_with("tag:") { folder } else { folder.to_lowercase() };
     
     let bytes = crate::mail::message_body::fetch_attachment_part(&account, &folder, uid, &part_id).await?;
     

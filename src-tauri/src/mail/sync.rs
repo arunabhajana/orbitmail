@@ -29,8 +29,18 @@ pub async fn sync_folder(app_handle: &AppHandle, account: Account, folder: MailF
     let imap_mailbox = match folder.to_imap_mailbox(&account.provider) {
         Some(mb) => mb.to_string(),
         None => {
-            log::info!("Folder {} is virtual. Skipping IMAP sync.", folder);
-            return Ok(0);
+            if let crate::mail::folder::MailFolder::Tag(ref tag_id) = folder {
+                let tags = crate::mail::database::get_all_tags(app_handle, &account.id).unwrap_or_default();
+                if let Some(tag) = tags.iter().find(|t| &t.id == tag_id) {
+                    tag.name.clone()
+                } else {
+                    log::warn!("Tag ID {} not found in database. Skipping IMAP sync.", tag_id);
+                    return Ok(0);
+                }
+            } else {
+                log::info!("Folder {} is virtual. Skipping IMAP sync.", folder);
+                return Ok(0);
+            }
         }
     };
 
@@ -65,9 +75,13 @@ pub async fn sync_folder(app_handle: &AppHandle, account: Account, folder: MailF
             } else {
                 session.examine(&imap_mailbox).map_err(|e| format!("IMAP Examine Error: {}", e))?
             };
+            
+            if let crate::mail::folder::MailFolder::Tag(ref _t) = folder_clone {
+                log::info!("IMAP Examine details for tag '{}': exists={}, uid_next={:?}, uid_validity={:?}", imap_mailbox, mailbox.exists, mailbox.uid_next, mailbox.uid_validity);
+            }
 
             let server_validity = mailbox.uid_validity.unwrap_or(0);
-            let uid_next = mailbox.uid_next.unwrap_or(0);
+            let uid_next = mailbox.uid_next.unwrap_or(1);
 
             // 1. UIDVALIDITY Check
             if stored_validity != Some(server_validity) {

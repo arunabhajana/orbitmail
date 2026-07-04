@@ -371,7 +371,7 @@ export const AttachmentCard = memo(({ uid, folder, attachment }: { uid: number, 
             // Since imap fetch blocks, we don't have true byte-level progress in NextJS easily.
             // The context will show "downloading" spinner until the IPC call returns.
             const resultPath = await invoke<string>('download_attachment', {
-                folder: folder === "sent" ? "sent" : "INBOX",
+                folder: folder || "inbox",
                 uid,
                 partId: attachment.partId,
                 savePath: savePath

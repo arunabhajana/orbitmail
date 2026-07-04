@@ -414,15 +414,30 @@ pub async fn fetch_and_cache_body_internal(app_handle: &AppHandle, account: &Acc
     
     let folder_clone = folder.to_string();
     let provider_clone = account.provider.clone();
+
+    use std::str::FromStr;
+    let imap_mailbox = match crate::mail::folder::MailFolder::from_str(&folder_clone) {
+        Ok(mf) => match mf.to_imap_mailbox(&provider_clone) {
+            Some(mb) => mb.to_string(),
+            None => {
+                if let crate::mail::folder::MailFolder::Tag(ref tag_id) = mf {
+                    let tags = database::get_all_tags(&app_handle, &account.id).unwrap_or_default();
+                    if let Some(tag) = tags.iter().find(|t| &t.id == tag_id) {
+                        tag.name.clone()
+                    } else {
+                        return Err(format!("Tag ID {} not found", tag_id));
+                    }
+                } else {
+                    return Err("Cannot fetch from virtual folder".to_string());
+                }
+            }
+        },
+        Err(_) => return Err(format!("Unknown folder: {}", folder_clone)),
+    };
+    
+    log::info!("Connecting to IMAP mailbox '{}' to fetch UID {}", imap_mailbox, uid);
+
     let imap_result = imap_session::execute_with_session(&account, imap_session::SessionKind::Prefetch, move |session| {
-        use std::str::FromStr;
-        let imap_mailbox = match crate::mail::folder::MailFolder::from_str(&folder_clone) {
-            Ok(mf) => match mf.to_imap_mailbox(&provider_clone) {
-                Some(mb) => mb.to_string(),
-                None => return Err("Cannot fetch from virtual folder".to_string()),
-            },
-            Err(_) => return Err(format!("Unknown folder: {}", folder_clone)),
-        };
 
         session.select(&imap_mailbox).map_err(|e| format!("IMAP Select Error: {}", e))?;
 
@@ -469,8 +484,12 @@ pub async fn fetch_and_cache_body_internal(app_handle: &AppHandle, account: &Acc
             if full_payload.is_empty() {
                 if let Some(b) = msg.body().or_else(|| msg.text()) {
                     full_payload.extend_from_slice(b);
+                } else {
+                    log::warn!("msg.body() and msg.text() were both empty for uid {}", uid);
                 }
             }
+        } else {
+            log::warn!("fetch_results.iter().next() was None for uid {}", uid);
         }
         Ok::<_, String>((target_part, full_payload, attachments))
     }).await;

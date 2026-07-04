@@ -26,7 +26,8 @@ export function useEmailBody(emailId: string | undefined, emailUid: number | und
         setError(null);
         setIframeHeight(400); // Reset height on new email
         try {
-            const dbFolder = folder === "sent" ? "sent" : "INBOX";
+            const dbFolder = folder || "inbox";
+            console.log("Fetching body for folder:", dbFolder, "uid:", emailUid, "original folder prop:", folder);
             const detail: MessageDetail = await invoke('get_message_body', { folder: dbFolder, uid: emailUid });
             setBodyContent(detail.body || "<p>Message has no content.</p>");
             setAttachments(detail.attachments || []);
@@ -63,7 +64,8 @@ export function useEmailBody(emailId: string | undefined, emailUid: number | und
             setError(null);
             setIframeHeight(400);
             try {
-                const dbFolder = folder === "sent" ? "sent" : "INBOX";
+                const dbFolder = folder || "inbox";
+                console.log("Fetching body for folder:", dbFolder, "uid:", emailUid, "original folder prop:", folder);
                 const detail: MessageDetail = await invoke('get_message_body', { folder: dbFolder, uid: emailUid });
                 if (isMounted) {
                     setBodyContent(detail.body || "<p>Message has no content.</p>");
@@ -95,7 +97,7 @@ export function useEmailBody(emailId: string | undefined, emailUid: number | und
         // Listen for background prefetch completion
         const unlisten = listen('mail:body_cached', (event) => {
             const payload = event.payload as { folder: string; uid: number };
-            const dbFolder = folder === "sent" ? "sent" : "inbox";
+            const dbFolder = folder ? (folder.toLowerCase().startsWith('tag:') ? folder : folder.toLowerCase()) : "inbox";
             if (payload.folder === dbFolder && payload.uid === emailUid) {
                 fetchBody();
             }

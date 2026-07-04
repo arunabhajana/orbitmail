@@ -1,4 +1,4 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
 use tokio::sync::{Mutex, Notify, oneshot};
 use once_cell::sync::Lazy;
@@ -62,7 +62,8 @@ impl BodyPrefetchManager {
         priority: PrefetchPriority,
         responder: Option<oneshot::Sender<Result<MessageDetail, String>>>,
     ) {
-        let key = BodyKey { folder: folder.to_lowercase(), uid };
+        let folder = if folder.to_lowercase().starts_with("tag:") { folder } else { folder.to_lowercase() };
+        let key = BodyKey { folder, uid };
         
         // Skip background duplicates if cached
         if priority == PrefetchPriority::Background {

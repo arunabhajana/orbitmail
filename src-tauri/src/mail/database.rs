@@ -527,12 +527,16 @@ pub fn load_messages_page(app_handle: &AppHandle, folder: &str, before_uid: Opti
             messages.push(msg.map_err(|e| e.to_string())?);
         }
     } else if let Some(tag_id) = folder.strip_prefix("tag:") {
-        let mut query = "SELECT m.uid, m.uid_validity, m.subject, m.sender, m.date, m.seen, m.flagged, m.snippet, m.folder, m.has_attachments, m.thread_id, m.recipient, m.message_id
-             FROM messages m
-             JOIN message_tags mt ON m.folder = mt.folder AND m.uid = mt.message_uid
-             WHERE mt.tag_id = ?1".to_string();
+        let mut query = "SELECT uid, uid_validity, subject, sender, date, seen, flagged, snippet, folder, has_attachments, thread_id, recipient, message_id
+             FROM (
+                 SELECT m.*, ROW_NUMBER() OVER(PARTITION BY COALESCE(m.message_id, m.uid || m.folder) ORDER BY m.date DESC) as rn
+                 FROM messages m
+                 LEFT JOIN message_tags mt ON m.folder = mt.folder AND m.uid = mt.message_uid
+                 WHERE m.folder = ?1 OR mt.tag_id = ?2
+             )
+             WHERE rn = 1".to_string();
              
-        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(tag_id.to_string())];
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(folder.to_string()), Box::new(tag_id.to_string())];
 
         if let Some(uid) = before_uid {
             let date: Option<i64> = conn.query_row(
@@ -542,15 +546,15 @@ pub fn load_messages_page(app_handle: &AppHandle, folder: &str, before_uid: Opti
             ).ok();
             
             if let Some(d) = date {
-                query.push_str(" AND m.date < ?2 ORDER BY m.date DESC LIMIT ?3");
+                query.push_str(" AND date < ?3 ORDER BY date DESC LIMIT ?4");
                 params.push(Box::new(d));
                 params.push(Box::new(limit));
             } else {
-                query.push_str(" ORDER BY m.date DESC LIMIT ?2");
+                query.push_str(" ORDER BY date DESC LIMIT ?3");
                 params.push(Box::new(limit));
             }
         } else {
-            query.push_str(" ORDER BY m.date DESC LIMIT ?2");
+            query.push_str(" ORDER BY date DESC LIMIT ?3");
             params.push(Box::new(limit));
         }
 

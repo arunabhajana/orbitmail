@@ -98,27 +98,20 @@ impl LocalSearchEngine for FTS5SearchEngine {
 }
 
 pub trait SearchBackend: Send + Sync {
-    fn search(&self, account: &Account, folder: &str, query: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>>;
-    fn load_more(&self, account: &Account, folder: &str, query: &str, cursor_uid: u32) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>>;
+    fn search(&self, account: &Account, imap_mailbox: &str, query: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>>;
+    fn load_more(&self, account: &Account, imap_mailbox: &str, query: &str, cursor_uid: u32) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>>;
     fn supports_feature(&self) -> ProviderCapabilities;
 }
 
 pub struct GmailSearchBackend;
 impl SearchBackend for GmailSearchBackend {
-    fn search(&self, account: &Account, folder: &str, query: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
+    fn search(&self, account: &Account, imap_mailbox: &str, query: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
         let account_clone = account.clone();
-        let folder_clone = folder.to_string();
+        let imap_mailbox_clone = imap_mailbox.to_string();
         let query_clone = query.to_string();
         Box::pin(async move {
-            let provider_clone = account_clone.provider.clone();
             execute_with_session(&account_clone, SessionKind::Search, move |session| {
-                let imap_mailbox = match crate::mail::folder::MailFolder::from_str(&folder_clone) {
-                    Ok(mf) => match mf.to_imap_mailbox(&provider_clone) {
-                        Some(mb) => mb.to_string(),
-                        None => return Err("Cannot fetch from virtual folder".to_string()),
-                    },
-                    Err(_) => return Err(format!("Unknown folder: {}", folder_clone)),
-                };
+                let imap_mailbox = imap_mailbox_clone.clone();
                 session.select(&imap_mailbox).map_err(|e| format!("IMAP Select Error: {}", e))?;
                 let search_query = format!("X-GM-RAW \"{}\"", query_clone.replace('"', "\\\""));
                 let uids = session.uid_search(&search_query).map_err(|e| format!("IMAP Search Error: {}", e))?;
@@ -129,20 +122,13 @@ impl SearchBackend for GmailSearchBackend {
         })
     }
 
-    fn load_more(&self, account: &Account, folder: &str, query: &str, cursor_uid: u32) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
+    fn load_more(&self, account: &Account, imap_mailbox: &str, query: &str, cursor_uid: u32) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
         let account_clone = account.clone();
-        let folder_clone = folder.to_string();
+        let imap_mailbox_clone = imap_mailbox.to_string();
         let query_clone = query.to_string();
         Box::pin(async move {
-            let provider_clone = account_clone.provider.clone();
             execute_with_session(&account_clone, SessionKind::Search, move |session| {
-                let imap_mailbox = match crate::mail::folder::MailFolder::from_str(&folder_clone) {
-                    Ok(mf) => match mf.to_imap_mailbox(&provider_clone) {
-                        Some(mb) => mb.to_string(),
-                        None => return Err("Cannot fetch from virtual folder".to_string()),
-                    },
-                    Err(_) => return Err(format!("Unknown folder: {}", folder_clone)),
-                };
+                let imap_mailbox = imap_mailbox_clone.clone();
                 session.select(&imap_mailbox).map_err(|e| format!("IMAP Select Error: {}", e))?;
                 let search_query = format!("UID 1:{} X-GM-RAW \"{}\"", cursor_uid.saturating_sub(1), query_clone.replace('"', "\\\""));
                 let uids = session.uid_search(&search_query).map_err(|e| format!("IMAP Search Error: {}", e))?;
@@ -166,20 +152,13 @@ impl SearchBackend for GmailSearchBackend {
 
 pub struct OutlookSearchBackend;
 impl SearchBackend for OutlookSearchBackend {
-    fn search(&self, account: &Account, folder: &str, query: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
+    fn search(&self, account: &Account, imap_mailbox: &str, query: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
         let account_clone = account.clone();
-        let folder_clone = folder.to_string();
+        let imap_mailbox_clone = imap_mailbox.to_string();
         let query_clone = query.to_string();
         Box::pin(async move {
-            let provider_clone = account_clone.provider.clone();
             execute_with_session(&account_clone, SessionKind::Search, move |session| {
-                let imap_mailbox = match crate::mail::folder::MailFolder::from_str(&folder_clone) {
-                    Ok(mf) => match mf.to_imap_mailbox(&provider_clone) {
-                        Some(mb) => mb.to_string(),
-                        None => return Err("Cannot fetch from virtual folder".to_string()),
-                    },
-                    Err(_) => return Err(format!("Unknown folder: {}", folder_clone)),
-                };
+                let imap_mailbox = imap_mailbox_clone.clone();
                 session.select(&imap_mailbox).map_err(|e| format!("IMAP Select Error: {}", e))?;
                 let search_query = format!("TEXT \"{}\"", query_clone.replace('"', "\\\""));
                 let uids = session.uid_search(&search_query).map_err(|e| format!("IMAP Search Error: {}", e))?;
@@ -190,20 +169,13 @@ impl SearchBackend for OutlookSearchBackend {
         })
     }
 
-    fn load_more(&self, account: &Account, folder: &str, query: &str, cursor_uid: u32) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
+    fn load_more(&self, account: &Account, imap_mailbox: &str, query: &str, cursor_uid: u32) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
         let account_clone = account.clone();
-        let folder_clone = folder.to_string();
+        let imap_mailbox_clone = imap_mailbox.to_string();
         let query_clone = query.to_string();
         Box::pin(async move {
-            let provider_clone = account_clone.provider.clone();
             execute_with_session(&account_clone, SessionKind::Search, move |session| {
-                let imap_mailbox = match crate::mail::folder::MailFolder::from_str(&folder_clone) {
-                    Ok(mf) => match mf.to_imap_mailbox(&provider_clone) {
-                        Some(mb) => mb.to_string(),
-                        None => return Err("Cannot fetch from virtual folder".to_string()),
-                    },
-                    Err(_) => return Err(format!("Unknown folder: {}", folder_clone)),
-                };
+                let imap_mailbox = imap_mailbox_clone.clone();
                 session.select(&imap_mailbox).map_err(|e| format!("IMAP Select Error: {}", e))?;
                 let search_query = format!("UID 1:{} TEXT \"{}\"", cursor_uid.saturating_sub(1), query_clone.replace('"', "\\\""));
                 let uids = session.uid_search(&search_query).map_err(|e| format!("IMAP Search Error: {}", e))?;
@@ -227,20 +199,13 @@ impl SearchBackend for OutlookSearchBackend {
 
 pub struct GenericImapSearchBackend;
 impl SearchBackend for GenericImapSearchBackend {
-    fn search(&self, account: &Account, folder: &str, query: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
+    fn search(&self, account: &Account, imap_mailbox: &str, query: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
         let account_clone = account.clone();
-        let folder_clone = folder.to_string();
+        let imap_mailbox_clone = imap_mailbox.to_string();
         let query_clone = query.to_string();
         Box::pin(async move {
-            let provider_clone = account_clone.provider.clone();
             execute_with_session(&account_clone, SessionKind::Search, move |session| {
-                let imap_mailbox = match crate::mail::folder::MailFolder::from_str(&folder_clone) {
-                    Ok(mf) => match mf.to_imap_mailbox(&provider_clone) {
-                        Some(mb) => mb.to_string(),
-                        None => return Err("Cannot fetch from virtual folder".to_string()),
-                    },
-                    Err(_) => return Err(format!("Unknown folder: {}", folder_clone)),
-                };
+                let imap_mailbox = imap_mailbox_clone.clone();
                 session.select(&imap_mailbox).map_err(|e| format!("IMAP Select Error: {}", e))?;
                 let search_query = format!("TEXT \"{}\"", query_clone.replace('"', "\\\""));
                 let uids = session.uid_search(&search_query).map_err(|e| format!("IMAP Search Error: {}", e))?;
@@ -251,20 +216,13 @@ impl SearchBackend for GenericImapSearchBackend {
         })
     }
 
-    fn load_more(&self, account: &Account, folder: &str, query: &str, cursor_uid: u32) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
+    fn load_more(&self, account: &Account, imap_mailbox: &str, query: &str, cursor_uid: u32) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u32>, String>> + Send>> {
         let account_clone = account.clone();
-        let folder_clone = folder.to_string();
+        let imap_mailbox_clone = imap_mailbox.to_string();
         let query_clone = query.to_string();
         Box::pin(async move {
-            let provider_clone = account_clone.provider.clone();
             execute_with_session(&account_clone, SessionKind::Search, move |session| {
-                let imap_mailbox = match crate::mail::folder::MailFolder::from_str(&folder_clone) {
-                    Ok(mf) => match mf.to_imap_mailbox(&provider_clone) {
-                        Some(mb) => mb.to_string(),
-                        None => return Err("Cannot fetch from virtual folder".to_string()),
-                    },
-                    Err(_) => return Err(format!("Unknown folder: {}", folder_clone)),
-                };
+                let imap_mailbox = imap_mailbox_clone.clone();
                 session.select(&imap_mailbox).map_err(|e| format!("IMAP Select Error: {}", e))?;
                 let search_query = format!("UID 1:{} TEXT \"{}\"", cursor_uid.saturating_sub(1), query_clone.replace('"', "\\\""));
                 let uids = session.uid_search(&search_query).map_err(|e| format!("IMAP Search Error: {}", e))?;
@@ -316,6 +274,7 @@ pub struct SearchContextState {
 }
 
 pub struct SearchContext {
+    #[allow(dead_code)]
     pub search_id: String,
     pub account: Account,
     pub folder: String,
@@ -330,14 +289,27 @@ pub async fn fetch_and_index_search_message(app_handle: &AppHandle, account: &Ac
     let folder_clone = folder.to_string();
     let provider_clone = account.provider.clone();
     
+    use std::str::FromStr;
+    let imap_mailbox = match crate::mail::folder::MailFolder::from_str(&folder_clone) {
+        Ok(mf) => match mf.to_imap_mailbox(&provider_clone) {
+            Some(mb) => mb.to_string(),
+            None => {
+                if let crate::mail::folder::MailFolder::Tag(ref tag_id) = mf {
+                    let tags = crate::mail::database::get_all_tags(app_handle, &account.id).unwrap_or_default();
+                    if let Some(tag) = tags.iter().find(|t| &t.id == tag_id) {
+                        tag.name.clone()
+                    } else {
+                        return Err(format!("Tag ID {} not found", tag_id));
+                    }
+                } else {
+                    return Err("Cannot fetch from virtual folder".to_string());
+                }
+            }
+        },
+        Err(_) => return Err(format!("Unknown folder: {}", folder_clone)),
+    };
+    
     let fetch_res = execute_with_session(account, SessionKind::Search, move |session| {
-        let imap_mailbox = match crate::mail::folder::MailFolder::from_str(&folder_clone) {
-            Ok(mf) => match mf.to_imap_mailbox(&provider_clone) {
-                Some(mb) => mb.to_string(),
-                None => return Err("Cannot fetch from virtual folder".to_string()),
-            },
-            Err(_) => return Err(format!("Unknown folder: {}", folder_clone)),
-        };
         session.select(&imap_mailbox).map_err(|e| format!("IMAP Select Error: {}", e))?;
         
         let fetch_query = "(UID FLAGS BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE TO CC REPLY-TO)])";
@@ -502,26 +474,46 @@ pub async fn start_search(app_handle: AppHandle, account: Account, folder: Strin
             }
             u
         } else {
-            let backend = get_search_backend(&account.provider);
-            let search_future = backend.search(&account, &folder_bg, &query_bg);
-            
-            let search_res = tokio::select! {
-                res = tokio::time::timeout(Duration::from_secs(10), search_future) => match res {
-                    Ok(r) => r,
-                    Err(_) => Err("IMAP search timeout".to_string()),
+            use std::str::FromStr;
+            let imap_mailbox_opt = match crate::mail::folder::MailFolder::from_str(&folder_bg) {
+                Ok(mf) => match mf.to_imap_mailbox(&account.provider) {
+                    Some(mb) => Some(mb.to_string()),
+                    None => {
+                        if let crate::mail::folder::MailFolder::Tag(ref tag_id) = mf {
+                            let tags = crate::mail::database::get_all_tags(&app_handle_bg, &account.id).unwrap_or_default();
+                            tags.iter().find(|t| &t.id == tag_id).map(|t| t.name.clone())
+                        } else {
+                            None
+                        }
+                    }
                 },
-                _ = token.cancelled() => {
-                    let mut state = context.state.lock().await;
-                    state.metrics.cancelled = true;
-                    state.remote_state = RemoteSearchState::Completed;
-                    let _ = app_handle_bg.emit("mail:search_progress", SearchProgress {
-                        search_id: search_id_bg.clone(),
-                        state: SearchState::Cancelled,
-                        matched: 0, downloaded: 0, indexed: 0, streamed: 0, total: 0,
-                        progress_text: "Cancelled.".to_string(),
-                    });
-                    return;
+                Err(_) => None,
+            };
+
+            let search_res = if let Some(imap_mailbox) = imap_mailbox_opt {
+                let backend = get_search_backend(&account.provider);
+                let search_future = backend.search(&account, &imap_mailbox, &query_bg);
+                
+                tokio::select! {
+                    res = tokio::time::timeout(Duration::from_secs(10), search_future) => match res {
+                        Ok(r) => r,
+                        Err(_) => Err("IMAP search timeout".to_string()),
+                    },
+                    _ = token.cancelled() => {
+                        let mut state = context.state.lock().await;
+                        state.metrics.cancelled = true;
+                        state.remote_state = RemoteSearchState::Completed;
+                        let _ = app_handle_bg.emit("mail:search_progress", SearchProgress {
+                            search_id: search_id_bg.clone(),
+                            state: SearchState::Cancelled,
+                            matched: 0, downloaded: 0, indexed: 0, streamed: 0, total: 0,
+                            progress_text: "Cancelled.".to_string(),
+                        });
+                        return;
+                    }
                 }
+            } else {
+                Err("Cannot search virtual folder or tag not found".to_string())
             };
 
             match search_res {
@@ -720,9 +712,26 @@ pub async fn load_more_results(app_handle: AppHandle, search_id: String) -> Resu
     tokio::spawn(async move {
         if pending_uids.is_empty() {
             if let Some(cur) = cursor {
-                let backend = get_search_backend(&account.provider);
-                if let Ok(Ok(mut uids)) = tokio::time::timeout(Duration::from_secs(10), backend.load_more(&account, &folder, &query, cur)).await {
-                    uids.truncate(500);
+                use std::str::FromStr;
+                let imap_mailbox_opt = match crate::mail::folder::MailFolder::from_str(&folder) {
+                    Ok(mf) => match mf.to_imap_mailbox(&account.provider) {
+                        Some(mb) => Some(mb.to_string()),
+                        None => {
+                            if let crate::mail::folder::MailFolder::Tag(ref tag_id) = mf {
+                                let tags = crate::mail::database::get_all_tags(&app_handle_bg, &account.id).unwrap_or_default();
+                                tags.iter().find(|t| &t.id == tag_id).map(|t| t.name.clone())
+                            } else {
+                                None
+                            }
+                        }
+                    },
+                    Err(_) => None,
+                };
+                
+                if let Some(imap_mailbox) = imap_mailbox_opt {
+                    let backend = get_search_backend(&account.provider);
+                    if let Ok(Ok(mut uids)) = tokio::time::timeout(Duration::from_secs(10), backend.load_more(&account, &imap_mailbox, &query, cur)).await {
+                        uids.truncate(500);
                     let existing = database::get_existing_uids(&app_handle_bg, &folder, &uids).unwrap_or_default();
                     if !existing.is_empty() {
                         let existing_vec: Vec<u32> = existing.iter().copied().collect();
@@ -746,6 +755,7 @@ pub async fn load_more_results(app_handle: AppHandle, search_id: String) -> Resu
                 }
             }
         }
+    }
 
         let mut batch_buffer = Vec::new();
         let mut last_emit = Instant::now();

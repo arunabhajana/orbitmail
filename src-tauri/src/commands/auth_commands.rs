@@ -98,7 +98,7 @@ pub async fn sync_mail_folder(app_handle: AppHandle, folder: String) -> Result<u
 
 #[command]
 pub fn get_folder_messages(app_handle: AppHandle, folder: String, before_uid: Option<u32>, limit: u32) -> Result<Vec<crate::mail::message_list::MessageHeader>, String> {
-    let folder = folder.to_lowercase();
+    let folder = if folder.to_lowercase().starts_with("tag:") { folder } else { folder.to_lowercase() };
     crate::mail::database::load_messages_page(&app_handle, &folder, before_uid, limit)
 }
 
@@ -106,7 +106,8 @@ pub fn get_folder_messages(app_handle: AppHandle, folder: String, before_uid: Op
 pub async fn get_message_body(app_handle: AppHandle, folder: String, uid: u32) -> Result<crate::mail::message_body::MessageDetail, String> {
     let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
     
-    let folder = folder.to_lowercase();
+    let folder = if folder.to_lowercase().starts_with("tag:") { folder } else { folder.to_lowercase() };
+    log::info!("Frontend requested get_message_body for folder='{}', uid={}", folder, uid);
     
     // Check cache first before enqueueing
     if let Ok(Some((cached_body, attachments_json, extracted_data_json))) = crate::mail::database::get_message_body_cache(&app_handle, &folder, uid) {

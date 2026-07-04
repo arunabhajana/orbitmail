@@ -44,6 +44,7 @@ pub async fn enqueue_sync(app_handle: AppHandle, account: Account, folder: MailF
             MailFolder::Inbox => 30, // Aggressive refresh (30 seconds)
             MailFolder::Sent => 300, // Lazy opportunistic refresh (5 minutes)
             MailFolder::Starred => 0, // Not synced from IMAP
+            MailFolder::Tag(_) => 60, // 1 minute refresh for tags
         };
 
         if elapsed < min_interval {

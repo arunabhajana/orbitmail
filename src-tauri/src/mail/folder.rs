@@ -9,6 +9,8 @@ pub enum MailFolder {
     Inbox,
     Sent,
     Starred,
+    #[serde(untagged)]
+    Tag(String),
 }
 
 impl fmt::Display for MailFolder {
@@ -17,6 +19,7 @@ impl fmt::Display for MailFolder {
             MailFolder::Inbox => write!(f, "inbox"),
             MailFolder::Sent => write!(f, "sent"),
             MailFolder::Starred => write!(f, "starred"),
+            MailFolder::Tag(tag_id) => write!(f, "tag:{}", tag_id),
         }
     }
 }
@@ -25,7 +28,13 @@ impl FromStr for MailFolder {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
+        let s_lower = s.to_lowercase();
+        if s_lower.starts_with("tag:") {
+            let tag_id = s[4..].to_string(); // Preserve case of tag ID
+            return Ok(MailFolder::Tag(tag_id));
+        }
+
+        match s_lower.as_str() {
             "inbox" => Ok(MailFolder::Inbox),
             "sent" => Ok(MailFolder::Sent),
             "starred" => Ok(MailFolder::Starred),
@@ -46,6 +55,7 @@ impl MailFolder {
                 MailProvider::Custom { .. } => Some("Sent"),
             },
             MailFolder::Starred => None,
+            MailFolder::Tag(_) => None, // Handled dynamically in sync.rs
         }
     }
 }

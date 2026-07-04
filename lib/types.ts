@@ -19,7 +19,7 @@ export interface Email {
     timestamp: number;
     unread: boolean;
     starred: boolean;
-    folder: "inbox" | "sent" | "drafts" | "trash" | "starred";
+    folder: "inbox" | "sent" | "drafts" | "trash" | "starred" | string;
     avatar?: string;
     body?: string;
     tags: string[];

@@ -85,8 +85,11 @@ export default function MainLayout() {
     // --- Derived State ---
 
     const filteredEmails = activeSearchState.searchQuery ? activeSearchState.searchResults : emails.filter(email => {
-        if (currentFolder === "starred") {
+        if (currentFolder === 'starred') {
             return email.starred;
+        }
+        if (currentFolder.startsWith('tag:')) {
+            return true;
         }
         return email.folder === currentFolder;
     });
@@ -141,7 +144,7 @@ export default function MainLayout() {
         }
 
         try {
-            const folderName = target.folder === "sent" ? "sent" : "INBOX";
+            const folderName = target.folder || "inbox";
             await invoke('toggle_star', { uid: target.uid, shouldStar: newStarredState, folder: folderName });
             fetchUnreadCounts();
         } catch (err) {
@@ -172,7 +175,7 @@ export default function MainLayout() {
         updateUnreadCount(target, newReadState ? -1 : 1);
 
         try {
-            const folderName = target.folder === "sent" ? "sent" : "INBOX";
+            const folderName = target.folder || "inbox";
             await invoke('toggle_read', { uid: target.uid, shouldRead: newReadState, folder: folderName });
             fetchUnreadCounts();
         } catch (err) {
@@ -201,7 +204,7 @@ export default function MainLayout() {
         updateUnreadCount(target, -1);
 
         try {
-            const folderName = target.folder === "sent" ? "sent" : "INBOX";
+            const folderName = target.folder || "inbox";
             await invoke('mark_as_read', { uid: target.uid, folder: folderName });
             fetchUnreadCounts();
         } catch (err) {
@@ -233,7 +236,7 @@ export default function MainLayout() {
         }
 
         try {
-            const folderName = target.folder === "sent" ? "sent" : "INBOX";
+            const folderName = target.folder || "inbox";
             await invoke('delete_message', { uid: target.uid, folder: folderName });
             fetchUnreadCounts();
         } catch (err) {
@@ -268,7 +271,11 @@ export default function MainLayout() {
     };
 
     const formatEmailFromMessage = (msg: any): Email => {
-        const folder = msg.folder?.toLowerCase() === "sent" ? "sent" : "inbox";
+        let folder = msg.folder;
+        if (!folder) folder = "inbox";
+        else if (folder.toLowerCase() === "sent") folder = "sent";
+        // Preserve case for tags, standardize others
+        else if (!folder.toLowerCase().startsWith("tag:")) folder = folder.toLowerCase();
         let senderName = msg.from.split('<')[0].trim();
         if (!senderName) {
             const emailMatch = msg.from.match(/<([^>]+)>/);
@@ -404,9 +411,9 @@ export default function MainLayout() {
         setIsSyncing(true);
         setSyncError(null);
 
-        // For Starred and Tags, we just need to ensure Inbox/Sent are relatively up-to-date.
-        // We will opportunistically sync Inbox if they are on a tag view.
-        const syncTarget = (folderAtSyncTime === "starred" || folderAtSyncTime.startsWith("tag:")) ? "inbox" : folderAtSyncTime;
+        // For Starred, we just need to ensure Inbox/Sent are relatively up-to-date.
+        // Tags are now directly synchronized from their respective IMAP mailboxes.
+        const syncTarget = folderAtSyncTime === "starred" ? "inbox" : folderAtSyncTime;
 
         // NOTE: sync_mail_folder is fire-and-forget on the backend (enqueues async sync,
         // returns 0 immediately). The real results arrive via the 'mail:updated' event.
