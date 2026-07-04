@@ -31,7 +31,6 @@ interface FolderSearchState {
 export default function MainLayout() {
     const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
     const [isComposeOpen, setIsComposeOpen] = useState(false);
-    const [composeMinimizeSignal, setComposeMinimizeSignal] = useState(0);
     const [isCreateTagOpen, setIsCreateTagOpen] = useState(false);
 
     // --- New State for Folders & Stars ---
@@ -990,7 +989,6 @@ export default function MainLayout() {
                 onCompose={() => setIsComposeOpen(true)}
                 onCreateTagClick={() => {
                     setIsCreateTagOpen(true);
-                    setComposeMinimizeSignal(s => s + 1);
                 }}
                 currentFolder={currentFolder}
                 onFolderSelect={setCurrentFolder}
@@ -1062,7 +1060,6 @@ export default function MainLayout() {
                 {isComposeOpen && (
                     <ComposeModal 
                         onClose={() => setIsComposeOpen(false)} 
-                        minimizeSignal={composeMinimizeSignal}
                         onSendStart={addPendingMessage}
                         onSendSuccess={(id, messageId) => {
                             updatePendingToSyncing(id, messageId);

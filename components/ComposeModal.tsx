@@ -49,7 +49,6 @@ interface ComposeModalProps {
   onClose: () => void;
   onSendStart?: (pending: PendingSentMessage) => void;
   onSendSuccess?: (id: string, messageId: string) => void;
-  minimizeSignal?: number;
 }
 
 export interface AttachmentFile {
@@ -184,8 +183,8 @@ function ToolbarButton({
           disabled
             ? "opacity-40 cursor-not-allowed text-foreground/40 dark:text-white/40"
             : isActive
-            ? "bg-primary/15 text-primary dark:bg-primary/20 dark:text-primary"
-            : "text-foreground/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white"
+              ? "bg-primary/15 text-primary dark:bg-primary/20 dark:text-primary"
+              : "text-foreground/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white"
         )}
       >
         {children}
@@ -350,7 +349,7 @@ function LinkDialog({ open, initialUrl, isEditing, onConfirm, onCancel }: LinkDi
 export type ComposeWindowState = "normal" | "maximized" | "minimized" | "hidden";
 export type ComposeStatus = "draft" | "sending" | "sent" | "failed";
 
-export default function ComposeModal({ onClose, onSendStart, onSendSuccess, minimizeSignal = 0 }: ComposeModalProps) {
+export default function ComposeModal({ onClose, onSendStart, onSendSuccess }: ComposeModalProps) {
   const [subject, setSubject] = useState("");
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const attachmentsRef = useRef(attachments);
@@ -370,11 +369,6 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
 
   const [composeStatus, setComposeStatus] = useState<ComposeStatus>("draft");
 
-  useEffect(() => {
-    if (minimizeSignal > 0) {
-      setComposeWindowState("minimized");
-    }
-  }, [minimizeSignal]);
   const [dockPosition] = useState("bottom-right");
 
   const [toast, setToast] = useState<{ message: string; id: number } | null>(null);
@@ -474,16 +468,16 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
       return;
     }
 
-      setComposeStatus("sending");
-      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      
-      onSendStart?.({
-        id: tempId,
-        subject: subject || '(No Subject)',
-        recipients: recipients,
-        createdAt: Date.now(),
-        status: 'sending'
-      });
+    setComposeStatus("sending");
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+    onSendStart?.({
+      id: tempId,
+      subject: subject || '(No Subject)',
+      recipients: recipients,
+      createdAt: Date.now(),
+      status: 'sending'
+    });
 
     try {
       // Cleanup pipeline: strip TipTap attrs → DOMPurify → wrap
@@ -505,7 +499,7 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
 
       setComposeStatus("sent");
       onSendSuccess?.(tempId, messageId);
-      
+
       setTimeout(() => {
         if (windowStateRef.current !== "hidden") {
           onClose();
@@ -530,7 +524,7 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
 
     try {
       const currentAttachments = attachmentsRef.current;
-      
+
       if (currentAttachments.length + paths.length > MAX_ATTACHMENTS) {
         showToast(`You can only attach up to ${MAX_ATTACHMENTS} files.`);
         return;
@@ -548,8 +542,8 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
         paths: newPaths
       });
 
-      const totalSize = currentAttachments.reduce((sum, a) => sum + a.size, 0) + 
-                        newAttachments.reduce((sum, a) => sum + a.size, 0);
+      const totalSize = currentAttachments.reduce((sum, a) => sum + a.size, 0) +
+        newAttachments.reduce((sum, a) => sum + a.size, 0);
 
       if (totalSize > MAX_ATTACHMENT_BYTES) {
         showToast("Files exceed the 18MB size limit. Please remove some attachments.");
@@ -625,7 +619,7 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
         console.error("Failed to setup drag drop listeners", err);
       }
     };
-    
+
     setup();
 
     return () => {
@@ -683,12 +677,12 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
     composeStatus === "sending" || composeStatus === "sent"
       ? null
       : isAttaching
-      ? "Please wait for attachments to process"
-      : recipients.length === 0
-      ? "Add at least one recipient"
-      : editorValue.isEmpty
-      ? "Write a message first"
-      : null;
+        ? "Please wait for attachments to process"
+        : recipients.length === 0
+          ? "Add at least one recipient"
+          : editorValue.isEmpty
+            ? "Write a message first"
+            : null;
 
   // --------------------------------------------------------------------------
   // Character count formatting
@@ -777,7 +771,7 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
   const isHidden = composeWindowState === "hidden";
 
   return (
-    <div 
+    <div
       className={cn(
         "fixed inset-0 z-50 pointer-events-none transition-opacity duration-300",
         isHidden ? "opacity-0 -z-10" : "opacity-100"
@@ -796,12 +790,12 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
 
       {/* Modal Window */}
       <motion.div
-        initial={{ 
-          opacity: 0, 
-          scale: 0.95, 
-          top: "calc(50% + 0px)", 
-          left: "calc(50% + 0px)", 
-          x: "-50%", 
+        initial={{
+          opacity: 0,
+          scale: 0.95,
+          top: "calc(50% + 0px)",
+          left: "calc(50% + 0px)",
+          x: "-50%",
           y: "-48%",
           width: "calc(100% + -32px)",
           maxWidth: "calc(0% + 672px)",
@@ -809,9 +803,9 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
           maxHeight: "calc(0% + 600px)",
           borderRadius: "16px"
         }}
-        animate={{ 
-          opacity: isHidden ? 0 : 1, 
-          scale: 1, 
+        animate={{
+          opacity: isHidden ? 0 : 1,
+          scale: 1,
           top: isMaximized ? "calc(0% + 30px)" : isMinimized ? "calc(100% + -24px)" : "calc(50% + 0px)",
           left: isMaximized ? "calc(0% + 0px)" : isMinimized ? "calc(100% + -24px)" : "calc(50% + 0px)",
           x: isMaximized ? "-0%" : isMinimized ? "-100%" : "-50%",
@@ -832,7 +826,7 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
       >
         <AnimatePresence>
           {isDraggingOver && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -850,7 +844,7 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
         {/* ---------------------------------------------------------------- */}
         {/* Window Header */}
         {/* ---------------------------------------------------------------- */}
-        <header 
+        <header
           onClick={() => {
             if (isMinimized && composeStatus === "draft") setComposeWindowState("normal");
           }}
@@ -919,13 +913,13 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
             )}
             {!isMinimized && (
               <>
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); setComposeWindowState("minimized"); }}
                   className="p-1.5 text-foreground/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-colors"
                 >
                   <Minus className="w-3.5 h-3.5" />
                 </button>
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); setComposeWindowState(isMaximized ? "normal" : "maximized"); }}
                   className="p-1.5 text-foreground/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-colors"
                 >
@@ -934,8 +928,8 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
               </>
             )}
             <button
-              onClick={(e) => { 
-                e.stopPropagation(); 
+              onClick={(e) => {
+                e.stopPropagation();
                 if (composeStatus === "sending") {
                   setComposeWindowState("hidden");
                 } else {
@@ -962,478 +956,478 @@ export default function ComposeModal({ onClose, onSendStart, onSendSuccess, mini
           {/* ---------------------------------------------------------------- */}
           <div className="flex flex-col flex-shrink-0">
             {/* To Field */}
-          <div className="flex items-center gap-2 px-6 py-3 border-b border-black/5 dark:border-white/5 relative">
-            <span className="text-muted-foreground dark:text-white/50 text-sm font-medium w-12 flex-shrink-0">
-              To:
-            </span>
-            <div className="flex flex-wrap gap-2 flex-1 items-center min-h-[32px]">
-              {recipients.map((email: string) => (
-                <motion.div
-                  layout
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  key={email}
-                  className="flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-0.5 rounded-full text-xs font-medium border border-primary/20"
+            <div className="flex items-center gap-2 px-6 py-3 border-b border-black/5 dark:border-white/5 relative">
+              <span className="text-muted-foreground dark:text-white/50 text-sm font-medium w-12 flex-shrink-0">
+                To:
+              </span>
+              <div className="flex flex-wrap gap-2 flex-1 items-center min-h-[32px]">
+                {recipients.map((email: string) => (
+                  <motion.div
+                    layout
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    key={email}
+                    className="flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-0.5 rounded-full text-xs font-medium border border-primary/20"
+                  >
+                    <span>{email}</span>
+                    <X
+                      className="w-3 h-3 cursor-pointer hover:text-primary/70"
+                      onClick={() => removeRecipient(email)}
+                    />
+                  </motion.div>
+                ))}
+                <input
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={isOpen}
+                  aria-activedescendant={
+                    isOpen && filteredContacts.length > 0
+                      ? `option-${selectedIndex}`
+                      : undefined
+                  }
+                  className="flex-1 bg-transparent border-none focus:ring-0 text-sm p-0 placeholder:text-muted-foreground/50 dark:placeholder:text-white/40 text-foreground dark:text-white/90 outline-none min-w-[120px]"
+                  placeholder={
+                    recipients.length === 0 ? "Add recipients..." : ""
+                  }
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  onKeyDown={handleKeyDown as React.KeyboardEventHandler}
+                  autoFocus
+                />
+              </div>
+
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={toggleOpen}
+                  aria-label="Browse contacts"
+                  className={cn(
+                    "p-1.5 rounded-full flex items-center justify-center transition-all",
+                    isOpen
+                      ? "bg-primary text-white"
+                      : "text-primary hover:bg-primary/10"
+                  )}
                 >
-                  <span>{email}</span>
-                  <X
-                    className="w-3 h-3 cursor-pointer hover:text-primary/70"
-                    onClick={() => removeRecipient(email)}
-                  />
-                </motion.div>
-              ))}
+                  <UserPlus className="w-4 h-4" />
+                </button>
+
+                {/* Contacts Dropdown */}
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.div
+                      role="listbox"
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute right-0 top-full mt-2 w-64 bg-white/80 dark:bg-[#1C1C21]/90 backdrop-blur-2xl border border-white/40 dark:border-white/10 rounded-xl shadow-2xl z-50 py-2 origin-top-right overflow-hidden shadow-primary/10"
+                    >
+                      <div className="px-3 pb-2 border-b border-black/5 dark:border-white/5">
+                        <span className="text-[10px] font-bold text-muted-foreground/60 dark:text-white/40 uppercase tracking-widest">
+                          Suggested Contacts
+                        </span>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto custom-scrollbar pt-1">
+                        {filteredContacts.length === 0 ? (
+                          <div className="px-3 py-4 text-center text-sm text-muted-foreground/60 dark:text-white/40">
+                            No matches found
+                          </div>
+                        ) : (
+                          filteredContacts.map(
+                            (contact: { email: string; name: string }, index: number) => (
+                              <button
+                                key={contact.email}
+                                ref={(el) => {
+                                  optionsRef.current[index] = el;
+                                }}
+                                role="option"
+                                id={`option-${index}`}
+                                aria-selected={index === selectedIndex}
+                                onClick={() => {
+                                  handleInputChange(contact.email + ", ");
+                                  toggleOpen();
+                                }}
+                                onMouseEnter={() => setSelectedIndex(index)}
+                                className={cn(
+                                  "w-full flex flex-col items-start px-3 py-2 transition-colors group border-b border-black/[0.02] dark:border-white/[0.02] last:border-0",
+                                  index === selectedIndex
+                                    ? "bg-primary/20"
+                                    : "hover:bg-primary/10"
+                                )}
+                              >
+                                <span className="text-sm font-semibold text-foreground dark:text-white/90 group-hover:text-primary transition-colors">
+                                  {contact.name}
+                                </span>
+                                <span className="text-xs text-muted-foreground dark:text-white/50 truncate w-full text-left">
+                                  {contact.email}
+                                </span>
+                              </button>
+                            )
+                          )
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Subject Field */}
+            <div className="flex items-center gap-2 px-6 py-3 border-b border-black/5 dark:border-white/5">
+              <span className="text-muted-foreground dark:text-white/50 text-sm font-medium w-12 flex-shrink-0">
+                Subject:
+              </span>
               <input
-                role="combobox"
-                aria-autocomplete="list"
-                aria-expanded={isOpen}
-                aria-activedescendant={
-                  isOpen && filteredContacts.length > 0
-                    ? `option-${selectedIndex}`
-                    : undefined
-                }
-                className="flex-1 bg-transparent border-none focus:ring-0 text-sm p-0 placeholder:text-muted-foreground/50 dark:placeholder:text-white/40 text-foreground dark:text-white/90 outline-none min-w-[120px]"
-                placeholder={
-                  recipients.length === 0 ? "Add recipients..." : ""
-                }
+                ref={subjectRef}
+                className="flex-1 bg-transparent border-none focus:ring-0 text-sm p-0 placeholder:text-muted-foreground/50 dark:placeholder:text-white/40 text-foreground dark:text-white/90 font-medium outline-none"
+                placeholder="Enter subject line"
                 type="text"
-                value={inputValue}
-                onChange={(e) => handleInputChange(e.target.value)}
-                onKeyDown={handleKeyDown as React.KeyboardEventHandler}
-                autoFocus
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                onKeyDown={handleSubjectKeyDown}
               />
             </div>
+          </div>
 
-            <div className="relative flex-shrink-0">
-              <button
-                onClick={toggleOpen}
-                aria-label="Browse contacts"
-                className={cn(
-                  "p-1.5 rounded-full flex items-center justify-center transition-all",
-                  isOpen
-                    ? "bg-primary text-white"
-                    : "text-primary hover:bg-primary/10"
+          {/* ---------------------------------------------------------------- */}
+          {/* Attachments Area */}
+          {/* ---------------------------------------------------------------- */}
+          {(attachments.length > 0 || isAttaching) && (
+            <div className="px-6 py-3 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] flex flex-col flex-shrink-0 max-h-[160px]">
+              <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                <span className="text-[11px] font-semibold text-muted-foreground/80 dark:text-white/50 uppercase tracking-widest">
+                  Attachments {attachments.length > 0 ? `(${attachments.length})` : ""}
+                </span>
+                {attachments.length > 0 && (
+                  <span className="text-[11px] font-medium text-muted-foreground/60 dark:text-white/40">
+                    {(attachments.reduce((sum, a) => sum + a.size, 0) / (1024 * 1024)).toFixed(2)} MB / 18.00 MB
+                  </span>
                 )}
-              >
-                <UserPlus className="w-4 h-4" />
-              </button>
-
-              {/* Contacts Dropdown */}
-              <AnimatePresence>
-                {isOpen && (
-                  <motion.div
-                    role="listbox"
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute right-0 top-full mt-2 w-64 bg-white/80 dark:bg-[#1C1C21]/90 backdrop-blur-2xl border border-white/40 dark:border-white/10 rounded-xl shadow-2xl z-50 py-2 origin-top-right overflow-hidden shadow-primary/10"
+              </div>
+              <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar pr-2 min-h-0 pb-1">
+                {attachments.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center gap-2 bg-white dark:bg-[#2A2A32] border border-black/10 dark:border-white/10 rounded-lg pl-3 pr-1.5 py-1.5 shadow-sm w-fit"
                   >
-                    <div className="px-3 pb-2 border-b border-black/5 dark:border-white/5">
-                      <span className="text-[10px] font-bold text-muted-foreground/60 dark:text-white/40 uppercase tracking-widest">
-                        Suggested Contacts
+                    <div className="flex items-center justify-center w-6 h-6 rounded bg-primary/10 text-primary shrink-0">
+                      <Paperclip className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex flex-col max-w-[180px]">
+                      <span className="text-xs font-medium text-foreground dark:text-white/90 truncate">
+                        {file.name}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground dark:text-white/50">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
                       </span>
                     </div>
-                    <div className="max-h-48 overflow-y-auto custom-scrollbar pt-1">
-                      {filteredContacts.length === 0 ? (
-                        <div className="px-3 py-4 text-center text-sm text-muted-foreground/60 dark:text-white/40">
-                          No matches found
-                        </div>
-                      ) : (
-                        filteredContacts.map(
-                          (contact: { email: string; name: string }, index: number) => (
-                            <button
-                              key={contact.email}
-                              ref={(el) => {
-                                optionsRef.current[index] = el;
-                              }}
-                              role="option"
-                              id={`option-${index}`}
-                              aria-selected={index === selectedIndex}
-                              onClick={() => {
-                                handleInputChange(contact.email + ", ");
-                                toggleOpen();
-                              }}
-                              onMouseEnter={() => setSelectedIndex(index)}
-                              className={cn(
-                                "w-full flex flex-col items-start px-3 py-2 transition-colors group border-b border-black/[0.02] dark:border-white/[0.02] last:border-0",
-                                index === selectedIndex
-                                  ? "bg-primary/20"
-                                  : "hover:bg-primary/10"
-                              )}
-                            >
-                              <span className="text-sm font-semibold text-foreground dark:text-white/90 group-hover:text-primary transition-colors">
-                                {contact.name}
-                              </span>
-                              <span className="text-xs text-muted-foreground dark:text-white/50 truncate w-full text-left">
-                                {contact.email}
-                              </span>
-                            </button>
-                          )
-                        )
-                      )}
+                    <button
+                      type="button"
+                      disabled={composeStatus === "sending" || composeStatus === "sent"}
+                      onClick={() => removeAttachment(file.id)}
+                      className="ml-1 p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50 shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {isAttaching && (
+                  <div className="flex items-center gap-3 bg-white/50 dark:bg-[#2A2A32]/50 border border-black/5 dark:border-white/5 rounded-lg px-3 py-1.5 shadow-sm w-[180px] overflow-hidden relative">
+                    <motion.div
+                      className="absolute inset-0 bg-primary/10"
+                      initial={{ x: "-100%" }}
+                      animate={{ x: "100%" }}
+                      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                    />
+                    <div className="flex items-center justify-center w-6 h-6 rounded bg-primary/10 text-primary shrink-0 z-10">
+                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
+                        <Paperclip className="w-3.5 h-3.5" />
+                      </motion.div>
                     </div>
-                  </motion.div>
+                    <div className="flex flex-col z-10">
+                      <span className="text-xs font-medium text-foreground dark:text-white/90">
+                        Processing...
+                      </span>
+                      <span className="text-[10px] text-muted-foreground dark:text-white/50">
+                        Reading files
+                      </span>
+                    </div>
+                  </div>
                 )}
-              </AnimatePresence>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Subject Field */}
-          <div className="flex items-center gap-2 px-6 py-3 border-b border-black/5 dark:border-white/5">
-            <span className="text-muted-foreground dark:text-white/50 text-sm font-medium w-12 flex-shrink-0">
-              Subject:
-            </span>
-            <input
-              ref={subjectRef}
-              className="flex-1 bg-transparent border-none focus:ring-0 text-sm p-0 placeholder:text-muted-foreground/50 dark:placeholder:text-white/40 text-foreground dark:text-white/90 font-medium outline-none"
-              placeholder="Enter subject line"
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              onKeyDown={handleSubjectKeyDown}
+          {/* ---------------------------------------------------------------- */}
+          {/* Rich Text Editor Area */}
+          {/* ---------------------------------------------------------------- */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col min-h-0 relative">
+            <RichTextEditor
+              autoFocus={false}
+              onChange={setEditorValue}
+              onReady={handleEditorReady}
+              onRequestLinkInsert={openLinkDialog}
             />
-          </div>
-        </div>
+            {/* Link dialog renders inside the editor area so it's contained */}
+            <LinkDialog
+              open={linkDialog?.open ?? false}
+              initialUrl={linkDialog?.initialUrl ?? "https://"}
+              isEditing={linkDialog?.isEditing ?? false}
+              onConfirm={handleLinkConfirm}
+              onCancel={handleLinkCancel}
+            />
 
-        {/* ---------------------------------------------------------------- */}
-        {/* Attachments Area */}
-        {/* ---------------------------------------------------------------- */}
-        {(attachments.length > 0 || isAttaching) && (
-          <div className="px-6 py-3 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] flex flex-col flex-shrink-0 max-h-[160px]">
-            <div className="flex items-center justify-between mb-2 flex-shrink-0">
-              <span className="text-[11px] font-semibold text-muted-foreground/80 dark:text-white/50 uppercase tracking-widest">
-                Attachments {attachments.length > 0 ? `(${attachments.length})` : ""}
-              </span>
-              {attachments.length > 0 && (
-                <span className="text-[11px] font-medium text-muted-foreground/60 dark:text-white/40">
-                  {(attachments.reduce((sum, a) => sum + a.size, 0) / (1024 * 1024)).toFixed(2)} MB / 18.00 MB
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar pr-2 min-h-0 pb-1">
-              {attachments.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center gap-2 bg-white dark:bg-[#2A2A32] border border-black/10 dark:border-white/10 rounded-lg pl-3 pr-1.5 py-1.5 shadow-sm w-fit"
-                >
-                  <div className="flex items-center justify-center w-6 h-6 rounded bg-primary/10 text-primary shrink-0">
-                    <Paperclip className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="flex flex-col max-w-[180px]">
-                    <span className="text-xs font-medium text-foreground dark:text-white/90 truncate">
-                      {file.name}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground dark:text-white/50">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={composeStatus === "sending" || composeStatus === "sent"}
-                    onClick={() => removeAttachment(file.id)}
-                    className="ml-1 p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50 shrink-0"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-              {isAttaching && (
-                <div className="flex items-center gap-3 bg-white/50 dark:bg-[#2A2A32]/50 border border-black/5 dark:border-white/5 rounded-lg px-3 py-1.5 shadow-sm w-[180px] overflow-hidden relative">
-                  <motion.div
-                    className="absolute inset-0 bg-primary/10"
-                    initial={{ x: "-100%" }}
-                    animate={{ x: "100%" }}
-                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                  />
-                  <div className="flex items-center justify-center w-6 h-6 rounded bg-primary/10 text-primary shrink-0 z-10">
-                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
-                      <Paperclip className="w-3.5 h-3.5" />
-                    </motion.div>
-                  </div>
-                  <div className="flex flex-col z-10">
-                    <span className="text-xs font-medium text-foreground dark:text-white/90">
-                      Processing...
-                    </span>
-                    <span className="text-[10px] text-muted-foreground dark:text-white/50">
-                      Reading files
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Rich Text Editor Area */}
-        {/* ---------------------------------------------------------------- */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col min-h-0 relative">
-          <RichTextEditor
-            autoFocus={false}
-            onChange={setEditorValue}
-            onReady={handleEditorReady}
-            onRequestLinkInsert={openLinkDialog}
-          />
-          {/* Link dialog renders inside the editor area so it's contained */}
-          <LinkDialog
-            open={linkDialog?.open ?? false}
-            initialUrl={linkDialog?.initialUrl ?? "https://"}
-            isEditing={linkDialog?.isEditing ?? false}
-            onConfirm={handleLinkConfirm}
-            onCancel={handleLinkCancel}
-          />
-
-          {/* Toast Notification */}
-          <AnimatePresence>
-            {toast && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-[#1a1a1f]/95 dark:bg-[#2A2A32]/95 backdrop-blur-md border border-white/[0.08] text-white text-xs font-medium rounded-lg shadow-xl shadow-black/20 flex items-center gap-2 max-w-[80%]"
-              >
-                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                <span className="truncate">{toast.message}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Bottom Toolbar & Actions */}
-        {/* ---------------------------------------------------------------- */}
-        <footer className="flex-shrink-0 px-3 py-2.5 border-t border-black/5 dark:border-white/5 bg-white/30 dark:bg-white/5">
-          {/* Formatting Toolbar Row */}
-          <div className="flex items-center gap-0.5 mb-2">
-            {/* Text formatting — align=start so tooltip doesn't overflow left edge */}
-            <ToolbarButton
-              label="Bold (Ctrl+B)"
-              isActive={isActive("bold")}
-              onClick={() => editorRef.current?.chain().focus().toggleBold().run()}
-              aria-label="Bold"
-              tooltipAlign="start"
-            >
-              <Bold className="w-4 h-4" />
-            </ToolbarButton>
-
-            <ToolbarButton
-              label="Italic (Ctrl+I)"
-              isActive={isActive("italic")}
-              onClick={() => editorRef.current?.chain().focus().toggleItalic().run()}
-              aria-label="Italic"
-              tooltipAlign="start"
-            >
-              <Italic className="w-4 h-4" />
-            </ToolbarButton>
-
-            <ToolbarButton
-              label="Underline (Ctrl+U)"
-              isActive={isActive("underline")}
-              onClick={() => editorRef.current?.chain().focus().toggleUnderline().run()}
-              aria-label="Underline"
-            >
-              <Underline className="w-4 h-4" />
-            </ToolbarButton>
-
-            <ToolbarDivider />
-
-            {/* Lists */}
-            <ToolbarButton
-              label="Bullet List"
-              isActive={isActive("bulletList")}
-              onClick={() => editorRef.current?.chain().focus().toggleBulletList().run()}
-              aria-label="Bullet list"
-            >
-              <List className="w-4 h-4" />
-            </ToolbarButton>
-
-            <ToolbarButton
-              label="Numbered List"
-              isActive={isActive("orderedList")}
-              onClick={() => editorRef.current?.chain().focus().toggleOrderedList().run()}
-              aria-label="Numbered list"
-            >
-              <ListOrdered className="w-4 h-4" />
-            </ToolbarButton>
-
-            <ToolbarDivider />
-
-            {/* Alignment */}
-            <ToolbarButton
-              label="Align Left"
-              isActive={isActive("paragraph", { textAlign: "left" })}
-              onClick={() => editorRef.current?.chain().focus().setTextAlign("left").run()}
-              aria-label="Align left"
-            >
-              <AlignLeft className="w-4 h-4" />
-            </ToolbarButton>
-
-            <ToolbarButton
-              label="Align Center"
-              isActive={isActive("paragraph", { textAlign: "center" })}
-              onClick={() => editorRef.current?.chain().focus().setTextAlign("center").run()}
-              aria-label="Align center"
-            >
-              <AlignCenter className="w-4 h-4" />
-            </ToolbarButton>
-
-            <ToolbarButton
-              label="Align Right"
-              isActive={isActive("paragraph", { textAlign: "right" })}
-              onClick={() => editorRef.current?.chain().focus().setTextAlign("right").run()}
-              aria-label="Align right"
-            >
-              <AlignRight className="w-4 h-4" />
-            </ToolbarButton>
-
-            <ToolbarDivider />
-
-            {/* Link */}
-            <ToolbarButton
-              label="Insert Link (Ctrl+K)"
-              isActive={isActive("link")}
-              onClick={() => openLinkDialog()}
-              aria-label="Insert link"
-            >
-              <LinkIcon className="w-4 h-4" />
-            </ToolbarButton>
-
-            <ToolbarDivider />
-
-            {/* Undo / Redo */}
-            <ToolbarButton
-              label="Undo (Ctrl+Z)"
-              onClick={() => editorRef.current?.chain().focus().undo().run()}
-              disabled={!canUndo}
-              aria-label="Undo"
-            >
-              <Undo2 className="w-4 h-4" />
-            </ToolbarButton>
-
-            <ToolbarButton
-              label="Redo (Ctrl+Shift+Z)"
-              onClick={() => editorRef.current?.chain().focus().redo().run()}
-              disabled={!canRedo}
-              aria-label="Redo"
-            >
-              <Redo2 className="w-4 h-4" />
-            </ToolbarButton>
-
-            <ToolbarDivider />
-
-            {/* Attachment */}
-            <ToolbarButton
-              label={isAttaching ? "Attaching..." : "Attach files"}
-              onClick={handleAttachFiles}
-              disabled={composeStatus === "sending" || composeStatus === "sent" || isAttaching}
-              aria-label="Attach files"
-              tooltipAlign="end"
-            >
-              {isAttaching ? (
+            {/* Toast Notification */}
+            <AnimatePresence>
+              {toast && (
                 <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-[#1a1a1f]/95 dark:bg-[#2A2A32]/95 backdrop-blur-md border border-white/[0.08] text-white text-xs font-medium rounded-lg shadow-xl shadow-black/20 flex items-center gap-2 max-w-[80%]"
                 >
-                  <Paperclip className="w-4 h-4" />
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="truncate">{toast.message}</span>
                 </motion.div>
-              ) : (
-                <Paperclip className="w-4 h-4" />
               )}
-            </ToolbarButton>
-
-            {/* Image — dummy until implemented */}
-            <Tooltip label="Insert Image (Coming Soon)" align="end">
-              <button
-                type="button"
-                disabled
-                aria-label="Insert image (coming soon)"
-                className="p-1.5 rounded-md opacity-40 cursor-not-allowed text-foreground/40 dark:text-white/40"
-              >
-                <ImageIcon className="w-4 h-4" />
-              </button>
-            </Tooltip>
+            </AnimatePresence>
           </div>
 
-          {/* Send Row */}
-          <div className="flex items-center justify-between">
-            {/* Character Count */}
-            <span className="text-[11px] text-muted-foreground/60 dark:text-white/40 tabular-nums pl-1 select-none">
-              {formatCharCount(editorValue.characterCount)}
-            </span>
+          {/* ---------------------------------------------------------------- */}
+          {/* Bottom Toolbar & Actions */}
+          {/* ---------------------------------------------------------------- */}
+          <footer className="flex-shrink-0 px-3 py-2.5 border-t border-black/5 dark:border-white/5 bg-white/30 dark:bg-white/5">
+            {/* Formatting Toolbar Row */}
+            <div className="flex items-center gap-0.5 mb-2">
+              {/* Text formatting — align=start so tooltip doesn't overflow left edge */}
+              <ToolbarButton
+                label="Bold (Ctrl+B)"
+                isActive={isActive("bold")}
+                onClick={() => editorRef.current?.chain().focus().toggleBold().run()}
+                aria-label="Bold"
+                tooltipAlign="start"
+              >
+                <Bold className="w-4 h-4" />
+              </ToolbarButton>
 
-            <div className="flex items-center gap-3">
-              {/* Discard */}
-              <Tooltip label="Discard draft">
+              <ToolbarButton
+                label="Italic (Ctrl+I)"
+                isActive={isActive("italic")}
+                onClick={() => editorRef.current?.chain().focus().toggleItalic().run()}
+                aria-label="Italic"
+                tooltipAlign="start"
+              >
+                <Italic className="w-4 h-4" />
+              </ToolbarButton>
+
+              <ToolbarButton
+                label="Underline (Ctrl+U)"
+                isActive={isActive("underline")}
+                onClick={() => editorRef.current?.chain().focus().toggleUnderline().run()}
+                aria-label="Underline"
+              >
+                <Underline className="w-4 h-4" />
+              </ToolbarButton>
+
+              <ToolbarDivider />
+
+              {/* Lists */}
+              <ToolbarButton
+                label="Bullet List"
+                isActive={isActive("bulletList")}
+                onClick={() => editorRef.current?.chain().focus().toggleBulletList().run()}
+                aria-label="Bullet list"
+              >
+                <List className="w-4 h-4" />
+              </ToolbarButton>
+
+              <ToolbarButton
+                label="Numbered List"
+                isActive={isActive("orderedList")}
+                onClick={() => editorRef.current?.chain().focus().toggleOrderedList().run()}
+                aria-label="Numbered list"
+              >
+                <ListOrdered className="w-4 h-4" />
+              </ToolbarButton>
+
+              <ToolbarDivider />
+
+              {/* Alignment */}
+              <ToolbarButton
+                label="Align Left"
+                isActive={isActive("paragraph", { textAlign: "left" })}
+                onClick={() => editorRef.current?.chain().focus().setTextAlign("left").run()}
+                aria-label="Align left"
+              >
+                <AlignLeft className="w-4 h-4" />
+              </ToolbarButton>
+
+              <ToolbarButton
+                label="Align Center"
+                isActive={isActive("paragraph", { textAlign: "center" })}
+                onClick={() => editorRef.current?.chain().focus().setTextAlign("center").run()}
+                aria-label="Align center"
+              >
+                <AlignCenter className="w-4 h-4" />
+              </ToolbarButton>
+
+              <ToolbarButton
+                label="Align Right"
+                isActive={isActive("paragraph", { textAlign: "right" })}
+                onClick={() => editorRef.current?.chain().focus().setTextAlign("right").run()}
+                aria-label="Align right"
+              >
+                <AlignRight className="w-4 h-4" />
+              </ToolbarButton>
+
+              <ToolbarDivider />
+
+              {/* Link */}
+              <ToolbarButton
+                label="Insert Link (Ctrl+K)"
+                isActive={isActive("link")}
+                onClick={() => openLinkDialog()}
+                aria-label="Insert link"
+              >
+                <LinkIcon className="w-4 h-4" />
+              </ToolbarButton>
+
+              <ToolbarDivider />
+
+              {/* Undo / Redo */}
+              <ToolbarButton
+                label="Undo (Ctrl+Z)"
+                onClick={() => editorRef.current?.chain().focus().undo().run()}
+                disabled={!canUndo}
+                aria-label="Undo"
+              >
+                <Undo2 className="w-4 h-4" />
+              </ToolbarButton>
+
+              <ToolbarButton
+                label="Redo (Ctrl+Shift+Z)"
+                onClick={() => editorRef.current?.chain().focus().redo().run()}
+                disabled={!canRedo}
+                aria-label="Redo"
+              >
+                <Redo2 className="w-4 h-4" />
+              </ToolbarButton>
+
+              <ToolbarDivider />
+
+              {/* Attachment */}
+              <ToolbarButton
+                label={isAttaching ? "Attaching..." : "Attach files"}
+                onClick={handleAttachFiles}
+                disabled={composeStatus === "sending" || composeStatus === "sent" || isAttaching}
+                aria-label="Attach files"
+                tooltipAlign="end"
+              >
+                {isAttaching ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </motion.div>
+                ) : (
+                  <Paperclip className="w-4 h-4" />
+                )}
+              </ToolbarButton>
+
+              {/* Image — dummy until implemented */}
+              <Tooltip label="Insert Image (Coming Soon)" align="end">
                 <button
                   type="button"
-                  onClick={onClose}
-                  aria-label="Discard draft"
-                  className="p-2 text-muted-foreground/80 dark:text-white/60 hover:text-red-500 transition-colors rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                  disabled
+                  aria-label="Insert image (coming soon)"
+                  className="p-1.5 rounded-md opacity-40 cursor-not-allowed text-foreground/40 dark:text-white/40"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <ImageIcon className="w-4 h-4" />
                 </button>
               </Tooltip>
+            </div>
 
-              {/* Send Button — wrapped in Tooltip when disabled to explain why */}
-              {sendDisabledReason ? (
-                <Tooltip label={sendDisabledReason} align="end">
+            {/* Send Row */}
+            <div className="flex items-center justify-between">
+              {/* Character Count */}
+              <span className="text-[11px] text-muted-foreground/60 dark:text-white/40 tabular-nums pl-1 select-none">
+                {formatCharCount(editorValue.characterCount)}
+              </span>
+
+              <div className="flex items-center gap-3">
+                {/* Discard */}
+                <Tooltip label="Discard draft">
                   <button
                     type="button"
-                    disabled
-                    aria-label="Send email (disabled)"
-                    aria-disabled="true"
-                    className="flex items-center gap-2 px-5 py-2 rounded-lg font-semibold shadow-lg text-sm bg-primary/50 text-white cursor-not-allowed opacity-60 relative overflow-hidden"
+                    onClick={onClose}
+                    aria-label="Discard draft"
+                    className="p-2 text-muted-foreground/80 dark:text-white/60 hover:text-red-500 transition-colors rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                   >
-                    <span>Send</span>
-                    <Send className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </Tooltip>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSend}
-                  disabled={isSendDisabled}
-                  aria-label="Send email"
-                  className={cn(
-                    "flex items-center gap-2 px-5 py-2 rounded-lg font-semibold shadow-lg transition-all active:scale-[0.98] relative overflow-hidden text-sm",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2",
-                    isSendDisabled
-                      ? "bg-primary/50 text-white cursor-not-allowed opacity-60"
-                      : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
-                  )}
-                >
-                  <span className="relative z-10">
-                    {composeStatus === "sending" ? "Sending..." : "Send"}
-                  </span>
 
-                  {composeStatus !== "sending" && composeStatus !== "sent" && (
-                    <Send className="w-3.5 h-3.5 relative z-10" />
-                  )}
-
-                  {composeStatus === "sending" && (
-                    <motion.div
-                      animate={{ x: [0, 4, 0], y: [0, -2, 0] }}
-                      transition={{ repeat: Infinity, duration: 1 }}
-                      className="relative z-10"
+                {/* Send Button — wrapped in Tooltip when disabled to explain why */}
+                {sendDisabledReason ? (
+                  <Tooltip label={sendDisabledReason} align="end">
+                    <button
+                      type="button"
+                      disabled
+                      aria-label="Send email (disabled)"
+                      aria-disabled="true"
+                      className="flex items-center gap-2 px-5 py-2 rounded-lg font-semibold shadow-lg text-sm bg-primary/50 text-white cursor-not-allowed opacity-60 relative overflow-hidden"
                     >
+                      <span>Send</span>
                       <Send className="w-3.5 h-3.5" />
-                    </motion.div>
-                  )}
+                    </button>
+                  </Tooltip>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSend}
+                    disabled={isSendDisabled}
+                    aria-label="Send email"
+                    className={cn(
+                      "flex items-center gap-2 px-5 py-2 rounded-lg font-semibold shadow-lg transition-all active:scale-[0.98] relative overflow-hidden text-sm",
+                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2",
+                      isSendDisabled
+                        ? "bg-primary/50 text-white cursor-not-allowed opacity-60"
+                        : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
+                    )}
+                  >
+                    <span className="relative z-10">
+                      {composeStatus === "sending" ? "Sending..." : "Send"}
+                    </span>
 
-                  {/* Loading shimmer */}
-                  {composeStatus === "sending" && (
-                    <motion.div
-                      initial={{ x: "-100%" }}
-                      animate={{ x: "200%" }}
-                      transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 z-0"
-                    />
-                  )}
-                </button>
-              )}
+                    {composeStatus !== "sending" && composeStatus !== "sent" && (
+                      <Send className="w-3.5 h-3.5 relative z-10" />
+                    )}
+
+                    {composeStatus === "sending" && (
+                      <motion.div
+                        animate={{ x: [0, 4, 0], y: [0, -2, 0] }}
+                        transition={{ repeat: Infinity, duration: 1 }}
+                        className="relative z-10"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                      </motion.div>
+                    )}
+
+                    {/* Loading shimmer */}
+                    {composeStatus === "sending" && (
+                      <motion.div
+                        initial={{ x: "-100%" }}
+                        animate={{ x: "200%" }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 z-0"
+                      />
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </footer>
+          </footer>
         </motion.div>
       </motion.div>
     </div>
