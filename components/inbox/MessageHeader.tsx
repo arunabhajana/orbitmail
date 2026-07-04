@@ -6,7 +6,7 @@ import { File, Download, FileText, Image as ImageIcon, FileArchive, FileCode, Vi
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { cn } from '@/lib/utils';
-import { Email, Attachment } from '@/lib/types';
+import { Email, Attachment, Tag } from '@/lib/types';
 import { useDownloads } from '@/components/DownloadContext';
 import { toast } from 'sonner';
 
@@ -113,6 +113,15 @@ const formatSimplifiedDateTime = (timestamp: number) => {
 export const MessageHeader = memo(({ email }: { email: Email }) => {
     const [showToast, setShowToast] = useState(false);
     const [isToExpanded, setIsToExpanded] = useState(false);
+    const [allTags, setAllTags] = useState<Record<string, Tag>>({});
+
+    React.useEffect(() => {
+        invoke<Tag[]>('get_all_tags').then(tags => {
+            const map: Record<string, Tag> = {};
+            tags.forEach(t => map[t.id] = t);
+            setAllTags(map);
+        }).catch(console.error);
+    }, []);
 
     const senderInfo = getSenderInfo(email.sender || '', email.senderEmail || '');
     const recipients = parseRecipients(email.to || '');
@@ -129,6 +138,19 @@ export const MessageHeader = memo(({ email }: { email: Email }) => {
 
     return (
         <header className="mb-8 relative">
+            {email.tags && email.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                    {email.tags.map(tid => {
+                        const tag = allTags[tid];
+                        if (!tag) return null;
+                        return (
+                            <span key={tid} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium" style={{ backgroundColor: tag.bg_color || '#e5e7eb', color: tag.text_color || '#374151' }}>
+                                {tag.name}
+                            </span>
+                        );
+                    })}
+                </div>
+            )}
             <motion.h1
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}

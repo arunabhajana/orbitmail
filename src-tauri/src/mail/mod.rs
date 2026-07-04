@@ -15,3 +15,4 @@ pub mod sync_manager;
 pub mod extraction;
 pub mod shutdown;
 pub mod search;
+pub mod tags;

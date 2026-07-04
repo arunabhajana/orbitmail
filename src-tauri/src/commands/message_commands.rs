@@ -454,3 +454,21 @@ pub async fn load_more_results(app_handle: tauri::AppHandle, search_id: String) 
 pub async fn clear_search(app_handle: tauri::AppHandle, search_id: String) -> Result<(), String> {
     crate::mail::search::clear_search(app_handle, search_id).await
 }
+
+#[tauri::command]
+pub async fn get_all_tags(app_handle: tauri::AppHandle) -> Result<Vec<crate::mail::database::Tag>, String> {
+    let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
+    let app_clone = app_handle.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::mail::database::get_all_tags(&app_clone, &account.id)
+    }).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn get_message_tags(app_handle: tauri::AppHandle, folder: String, message_uid: u32) -> Result<Vec<String>, String> {
+    let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
+    let app_clone = app_handle.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::mail::database::get_message_tags(&app_clone, &account.id, &folder, message_uid)
+    }).await.map_err(|e| e.to_string())?
+}

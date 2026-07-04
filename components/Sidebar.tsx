@@ -18,7 +18,8 @@ import Link from "next/link"; // Import Link for navigation
 
 import { UserProfile } from "./sidebar/UserProfile";
 import { NavItem, TagItem } from "./sidebar/SidebarNavItem";
-import { NavItemConfig, TagConfig } from "@/lib/types";
+import { NavItemConfig, Tag } from "@/lib/types";
+import { invoke } from "@tauri-apps/api/core";
 
 // --- Types ---
 
@@ -40,16 +41,18 @@ const NAV_ITEMS: NavItemConfig[] = [
     { icon: Trash2, label: "Trash", id: "trash" },
 ];
 
-const TAG_ITEMS: TagConfig[] = [
-    { label: "Work", colorClass: "bg-orange-400" },
-    { label: "Personal", colorClass: "bg-green-400" },
-];
-
-// --- Constants ---
-
-// --- Main Component ---
-
 const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, currentFolder, onFolderSelect, unreadCounts }) => {
+    const [tags, setTags] = useState<Tag[]>([]);
+
+    React.useEffect(() => {
+        const fetchTags = () => invoke<Tag[]>("get_all_tags").then(setTags).catch(console.error);
+        fetchTags();
+        
+        import("@tauri-apps/api/event").then(({ listen }) => {
+            const unlisten = listen("mail:tags_updated", fetchTags);
+            return () => unlisten.then(f => f());
+        }).catch(console.error);
+    }, []);
     return (
         <aside
             className={cn(
@@ -89,8 +92,17 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, currentFolder, 
                             Tags
                         </h3>
                         <div className="space-y-1">
-                            {TAG_ITEMS.map((item) => (
-                                <TagItem key={item.label} {...item} />
+                            {tags.filter(t => t.tag_type === 'user').map((item) => (
+                                <TagItem 
+                                    key={item.id} 
+                                    tag={item} 
+                                    highlight={currentFolder === `tag:${item.id}`} 
+                                    onClick={() => onFolderSelect?.(`tag:${item.id}`)} 
+                                    onColorChange={(tagId, bg, text) => {
+                                        setTags(prev => prev.map(t => t.id === tagId ? { ...t, bg_color: bg, text_color: text } : t));
+                                        invoke('update_tag_color', { tagId, bgColor: bg, textColor: text }).catch(console.error);
+                                    }}
+                                />
                             ))}
                         </div>
                     </div>

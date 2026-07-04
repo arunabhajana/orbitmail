@@ -2,7 +2,7 @@
 
 import React, { memo } from "react";
 import { cn } from "@/lib/utils";
-import { NavItemConfig, TagConfig } from "@/lib/types";
+import { NavItemConfig, Tag } from "@/lib/types";
 
 export const NavItem = memo(({ icon: Icon, label, id, badge, highlight, onClick }: NavItemConfig & { onClick?: () => void }) => (
     <button
@@ -35,10 +35,72 @@ export const NavItem = memo(({ icon: Icon, label, id, badge, highlight, onClick 
 ));
 NavItem.displayName = "NavItem";
 
-export const TagItem = memo(({ label, colorClass }: TagConfig) => (
-    <button className="w-full flex items-center gap-3 pl-4 pr-3 py-2 rounded-lg text-sm font-medium text-muted-foreground dark:text-white/60 hover:text-foreground dark:hover:text-white/90 hover:bg-white/40 dark:hover:bg-white/5 transition-all duration-200">
-        <span className={cn("w-2.5 h-2.5 rounded-full ring-1 ring-black/5", colorClass)} />
-        <span className="truncate">{label}</span>
-    </button>
-));
+import { useState, useRef, useEffect } from "react";
+import { MoreHorizontal } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { GMAIL_TAG_COLORS } from "@/lib/types";
+
+export const TagItem = memo(({ tag, highlight, onClick, onColorChange }: { tag: Tag, highlight?: boolean, onClick?: () => void, onColorChange?: (tagId: string, bg: string, text: string) => void }) => {
+    const [isHovered, setIsHovered] = useState(false);
+    const [isPickerOpen, setIsPickerOpen] = useState(false);
+
+    const handleColorPick = (e: React.MouseEvent, bg: string, text: string) => {
+        e.stopPropagation();
+        setIsPickerOpen(false);
+        if (onColorChange) onColorChange(tag.id, bg, text);
+    };
+
+    return (
+        <div 
+            className="flex flex-col"
+            onMouseEnter={() => setIsHovered(true)} 
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            <button 
+                onClick={onClick} 
+                className={cn("w-full flex items-center gap-3 pl-4 pr-2 py-2 rounded-lg text-sm transition-all duration-200 outline-none", 
+                    highlight ? "bg-white/60 dark:bg-white/10 text-foreground dark:text-white/90 font-medium shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
+                              : "font-medium text-muted-foreground dark:text-white/60 hover:text-foreground dark:hover:text-white/90 hover:bg-white/40 dark:hover:bg-white/5")}
+            >
+                <span className="w-2.5 h-2.5 rounded-full ring-1 ring-black/5 flex-shrink-0" style={{ backgroundColor: tag.bg_color || '#9ca3af' }} />
+                <span className="truncate flex-1 text-left">{tag.name}</span>
+                
+                {(isHovered || isPickerOpen) && (
+                    <div 
+                        className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsPickerOpen(!isPickerOpen);
+                        }}
+                    >
+                        <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                )}
+            </button>
+
+            <AnimatePresence>
+                {isPickerOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="py-2 px-3 pb-3 grid grid-cols-6 gap-2">
+                            {GMAIL_TAG_COLORS.slice(0, 30).map((color, i) => (
+                                <button
+                                    key={i}
+                                    onClick={(e) => handleColorPick(e, color.bg, color.text)}
+                                    className="w-5 h-5 rounded-full ring-1 ring-black/10 dark:ring-white/10 hover:scale-125 transition-transform"
+                                    style={{ backgroundColor: color.bg }}
+                                    title="Set tag color"
+                                />
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+});
 TagItem.displayName = "TagItem";

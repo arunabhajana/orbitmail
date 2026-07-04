@@ -19,6 +19,8 @@ pub struct MessageHeader {
     pub snippet: Option<String>,
     pub to: Option<String>,
     pub message_id: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 pub async fn get_inbox_messages(app_handle: &AppHandle, account: Account) -> Result<Vec<MessageHeader>, String> {
@@ -122,6 +124,7 @@ pub async fn get_inbox_messages(app_handle: &AppHandle, account: Account) -> Res
                         snippet,
                         to: to_opt,
                         message_id,
+                        tags: Vec::new(),
                     });
                 }
             }

@@ -28,7 +28,8 @@ export const EmailListItem = memo(({
     onSelect,
     onToggleStar,
     onToggleRead,
-    onDelete
+    onDelete,
+    allTags = {}
 }: {
     email: Email;
     isSelected: boolean;
@@ -36,6 +37,7 @@ export const EmailListItem = memo(({
     onToggleStar?: (id: string) => void;
     onToggleRead?: (id: string) => void;
     onDelete?: (id: string) => void;
+    allTags?: Record<string, import('@/lib/types').Tag>;
 }) => {
     const [previewText, setPreviewText] = useState(email.preview || "");
 
@@ -97,6 +99,22 @@ export const EmailListItem = memo(({
                         {email.time}
                     </span>
                 </div>
+                
+                {email.tags && email.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-1.5 overflow-hidden">
+                        {email.tags.map(tid => {
+                            const tag = allTags[tid];
+                            if (!tag) return null;
+                            if (tag.tag_type === 'system') return null; // Hide system tags from the preview
+                            return (
+                                <span key={tid} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium" style={{ backgroundColor: tag.bg_color || '#e5e7eb', color: tag.text_color || '#374151' }}>
+                                    {tag.name}
+                                </span>
+                            );
+                        })}
+                    </div>
+                )}
+                
                 <h4 className={cn(
                     "text-sm mb-1 truncate pr-2 tracking-tight flex-none",
                     isSelected ? "font-semibold text-foreground/90 dark:text-white/90" : "font-medium text-foreground/70 dark:text-white/70"

@@ -30,7 +30,7 @@ struct BodyPrefetchManagerState {
     immediate_queue: VecDeque<FetchJob>,
     search_queue: VecDeque<FetchJob>,
     background_queue: VecDeque<FetchJob>,
-    in_progress: HashSet<BodyKey>,
+    in_progress: std::collections::HashMap<BodyKey, Vec<oneshot::Sender<Result<MessageDetail, String>>>>,
     worker_started: bool,
 }
 
@@ -45,7 +45,7 @@ pub static PREFETCH_MANAGER: Lazy<Arc<BodyPrefetchManager>> = Lazy::new(|| {
             immediate_queue: VecDeque::new(),
             search_queue: VecDeque::new(),
             background_queue: VecDeque::new(),
-            in_progress: HashSet::new(),
+            in_progress: std::collections::HashMap::new(),
             worker_started: false,
         }),
         notify: Notify::new(),
@@ -73,8 +73,13 @@ impl BodyPrefetchManager {
 
         let mut state = self.state.lock().await;
 
-        if state.in_progress.contains(&key) {
-            log::debug!("Skipping duplicate prefetch: {} {}", key.folder, key.uid);
+        if state.in_progress.contains_key(&key) {
+            log::debug!("Appending responder to in-progress prefetch: {} {}", key.folder, key.uid);
+            if let Some(tx) = responder {
+                if let Some(responders) = state.in_progress.get_mut(&key) {
+                    responders.push(tx);
+                }
+            }
             return;
         }
 
@@ -193,7 +198,7 @@ impl BodyPrefetchManager {
 
                 {
                     let mut state = manager.state.lock().await;
-                    state.in_progress.insert(job.key.clone());
+                    state.in_progress.insert(job.key.clone(), job.responders);
                 }
 
                 // If background fetch, strictly reserve 1 permit for UI fast-paths
@@ -202,8 +207,8 @@ impl BodyPrefetchManager {
                     log::debug!("Body fetch deferred due to active sync");
                     let mut state = manager.state.lock().await;
                     let key = job.key.clone();
-                    state.background_queue.push_front(job);
-                    state.in_progress.remove(&key);
+                    let responders = state.in_progress.remove(&key).unwrap_or_default();
+                    state.background_queue.push_front(FetchJob { key: key.clone(), responders });
                     drop(state);
                     tokio::select! {
                         _ = tokio::time::sleep(std::time::Duration::from_millis(200)) => continue,
@@ -215,11 +220,13 @@ impl BodyPrefetchManager {
                     Ok(acc) => acc,
                     Err(_) => {
                         log::warn!("Body fetch deferred: No active account");
-                        for tx in job.responders {
+                        let responders = {
+                            let mut state = manager.state.lock().await;
+                            state.in_progress.remove(&job.key).unwrap_or_default()
+                        };
+                        for tx in responders {
                             let _ = tx.send(Err("No active account".to_string()));
                         }
-                        let mut state = manager.state.lock().await;
-                        state.in_progress.remove(&job.key);
                         continue;
                     }
                 };
@@ -239,6 +246,11 @@ impl BodyPrefetchManager {
                     }
                 }
                 
+                let responders = {
+                    let mut state = manager.state.lock().await;
+                    state.in_progress.remove(&job.key).unwrap_or_default()
+                };
+
                 // Reply to oneshot waiters inline
                 if fetch_res.is_ok() {
                     if let Ok(Some((cached_body, attachments_json, extracted_data_json))) = database::get_message_body_cache(&app_handle, &job.key.folder, job.key.uid) {
@@ -251,17 +263,17 @@ impl BodyPrefetchManager {
                         
                         let detail = MessageDetail { body: cached_body, attachments, extracted_data };
                         
-                        for tx in job.responders {
+                        for tx in responders {
                             let _ = tx.send(Ok(detail.clone()));
                         }
                     } else {
-                        for tx in job.responders {
+                        for tx in responders {
                             let _ = tx.send(Err("Failed to read cache after fetch".to_string()));
                         }
                     }
                 } else {
                     let err_msg = fetch_res.as_ref().err().unwrap().to_string();
-                    for tx in job.responders {
+                    for tx in responders {
                         let _ = tx.send(Err(err_msg.clone()));
                     }
                 }
@@ -279,10 +291,7 @@ impl BodyPrefetchManager {
                     });
                 }
 
-                {
-                    let mut state = manager.state.lock().await;
-                    state.in_progress.remove(&job.key);
-                }
+                // State was already cleaned up
             }
             log::info!("Prefetch worker gracefully shut down");
         });

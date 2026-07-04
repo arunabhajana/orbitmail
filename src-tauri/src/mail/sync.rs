@@ -15,6 +15,17 @@ pub async fn sync_inbox(app_handle: &AppHandle, account: Account) -> Result<u32,
 }
 
 pub async fn sync_folder(app_handle: &AppHandle, account: Account, folder: MailFolder) -> Result<u32, String> {
+    // Check global state for tags sync
+    let global_state = database::get_global_sync_state(app_handle).unwrap_or_default();
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
+    
+    if global_state.last_tag_sync_at.unwrap_or(0) + 900 < now {
+        log::info!("Tags are older than 15 mins, syncing tags via provider.");
+        if let Err(e) = crate::mail::tags::sync_tags(app_handle, &account).await {
+            log::error!("Failed to sync tags: {}", e);
+        }
+    }
+
     let imap_mailbox = match folder.to_imap_mailbox(&account.provider) {
         Some(mb) => mb.to_string(),
         None => {
@@ -27,6 +38,7 @@ pub async fn sync_folder(app_handle: &AppHandle, account: Account, folder: MailF
     let app_handle_clone = app_handle.clone();
     let folder_name_clone = folder_name.clone();
     let folder_clone = folder.clone();
+    let account_clone = account.clone();
 
     let new_messages_count_future = crate::mail::imap_session::execute_with_session(
         &account,
@@ -129,6 +141,19 @@ pub async fn sync_folder(app_handle: &AppHandle, account: Account, folder: MailF
 
             log::info!("Grabbed {} new messages for {}!", num_new, folder_name_clone);
             database::insert_or_update_messages(&app_handle_clone, &messages).map_err(|e| e.to_string())?;
+
+            if num_new > 0 {
+                if let Err(e) = crate::mail::tags::sync_message_tags(
+                    session,
+                    &range,
+                    &folder_name_clone,
+                    &account_clone.id,
+                    &account_clone.provider,
+                    &app_handle_clone,
+                ) {
+                    log::error!("Failed to sync message tags: {}", e);
+                }
+            }
             
             if !raw_headers.is_empty() {
                 if let Err(e) = crate::contacts::contact_indexer::extract_and_store_contacts(&app_handle_clone, &raw_headers) {
@@ -271,5 +296,6 @@ fn parse_header_to_message(msg: &imap::types::Fetch, server_validity: u32, folde
         snippet,
         to: to_opt,
         message_id,
+        tags: Vec::new(),
     })
 }

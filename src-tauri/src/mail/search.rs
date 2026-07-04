@@ -399,6 +399,7 @@ pub async fn fetch_and_index_search_message(app_handle: &AppHandle, account: &Ac
                 thread_id: None,
                 to: None,
                 message_id: None,
+                tags: Vec::new(),
             };
             
             return Ok(header);

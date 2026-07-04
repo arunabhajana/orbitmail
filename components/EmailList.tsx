@@ -67,6 +67,15 @@ const EmailList: React.FC<EmailListProps> = ({
     onSearchLoadMore
 }) => {
     const [currentFilter, setCurrentFilter] = React.useState<FilterType>('all');
+    const [allTags, setAllTags] = React.useState<Record<string, import('@/lib/types').Tag>>({});
+
+    React.useEffect(() => {
+        invoke<import('@/lib/types').Tag[]>('get_all_tags').then(tags => {
+            const map: Record<string, import('@/lib/types').Tag> = {};
+            tags.forEach(t => map[t.id] = t);
+            setAllTags(map);
+        }).catch(console.error);
+    }, []);
 
     React.useEffect(() => {
         setCurrentFilter('all');
@@ -344,6 +353,7 @@ const EmailList: React.FC<EmailListProps> = ({
                                         onToggleStar={onToggleStar}
                                         onToggleRead={onToggleRead}
                                         onDelete={onDeleteMessage}
+                                        allTags={allTags}
                                     />
                                 </div>
                             );

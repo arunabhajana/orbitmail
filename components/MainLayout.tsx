@@ -404,9 +404,9 @@ export default function MainLayout() {
         setIsSyncing(true);
         setSyncError(null);
 
-        // For Starred, we just need to ensure Inbox/Sent are relatively up-to-date.
-        // We will opportunistically sync Inbox if they are on Starred view.
-        const syncTarget = folderAtSyncTime === "starred" ? "inbox" : folderAtSyncTime;
+        // For Starred and Tags, we just need to ensure Inbox/Sent are relatively up-to-date.
+        // We will opportunistically sync Inbox if they are on a tag view.
+        const syncTarget = (folderAtSyncTime === "starred" || folderAtSyncTime.startsWith("tag:")) ? "inbox" : folderAtSyncTime;
 
         // NOTE: sync_mail_folder is fire-and-forget on the backend (enqueues async sync,
         // returns 0 immediately). The real results arrive via the 'mail:updated' event.

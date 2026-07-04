@@ -70,13 +70,25 @@ pub async fn get_inbox_messages(app_handle: AppHandle) -> Result<Vec<crate::mail
 pub async fn sync_inbox(app_handle: AppHandle) -> Result<u32, String> {
     let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
 
+    let app_clone = app_handle.clone();
+    let account_clone = account.clone();
+    tokio::spawn(async move {
+        let _ = crate::mail::tags::sync_tags(&app_clone, &account_clone).await;
+    });
+
     crate::mail::sync_manager::enqueue_sync(app_handle, account, crate::mail::folder::MailFolder::Inbox).await;
-    Ok(0) // enqueue is async, returning 0 immediately
+    Ok(0)
 }
 
 #[command]
 pub async fn sync_mail_folder(app_handle: AppHandle, folder: String) -> Result<u32, String> {
     let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
+
+    let app_clone = app_handle.clone();
+    let account_clone = account.clone();
+    tokio::spawn(async move {
+        let _ = crate::mail::tags::sync_tags(&app_clone, &account_clone).await;
+    });
 
     let mail_folder = folder.parse::<crate::mail::folder::MailFolder>().map_err(|e| e.to_string())?;
 
@@ -155,4 +167,8 @@ pub async fn clear_local_cache(app_handle: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-
+#[tauri::command]
+pub async fn update_tag_color(app_handle: AppHandle, tag_id: String, bg_color: String, text_color: String) -> Result<(), String> {
+    let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
+    crate::mail::tags::update_tag_color(&app_handle, &account, &tag_id, &bg_color, &text_color).await
+}
