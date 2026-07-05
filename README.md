@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/app-icon.svg" alt="OrionMail Logo" width="128" />
+  <img src="public/logo.svg" alt="OrionMail Logo" width="128" />
   <h1>OrionMail</h1>
 </div>
 
@@ -17,21 +17,23 @@ OrionMail is a modern, high-performance desktop email client built with **Next.j
 
 OrionMail connects local robustness with web-like flexibility. Key features and their underlying mechanics include:
 
-### ⚡ Core Capabilities
+### Core Capabilities
 *   **Offline-First Database**: Uses a local SQLite database (`get_db_path()`, `init_from_db()`) to store emails, contacts, and account configurations, ensuring instant access even without an internet connection.
 *   **Smart Background Sync**: The Rust backend handles complex IMAP/SMTP operations (`sync_folder()`, `sync_inbox()`) quietly in the background without blocking the UI.
 *   **Predictive Body Prefetching**: Features a dedicated `BodyPrefetchManager` and background worker (`spawn_worker()`) that preemptively downloads and caches email contents (`fetch_and_cache_body_internal()`) for zero-latency reading.
 *   **Multi-Provider Authentication**: Secure OAuth flows for Google and Outlook, plus support for Custom IMAP/SMTP configurations, managed via a secure local `AuthStore` and seamlessly integrated with the React frontend.
 
-### 🎨 User Interface & Experience
+### User Interface & Experience
 *   **Glassmorphic & Adaptive Theming**: A sophisticated, translucent UI built with Tailwind CSS. Includes dynamic accent color customization (`AccentColorProvider`, `useAccentColor()`) and dark mode support.
 *   **High-Performance Email List**: Utilizes virtualized lists to effortlessly render thousands of emails (`EmailList`), paired with smooth transitions and interactive loaders like `OrbitLoader`.
+*   **Interactive Context Menus**: Seamless, floating right-click context menus for quick actions like Reply, Forward, Archive, Delete, Mark as Read, Pin, Snooze, and Tagging.
 *   **Secure Email Rendering**: Robust email sanitization ensures safety when rendering HTML content from untrusted senders in the `EmailDetail` view.
 *   **Integrated Compose & Attachments**: A feature-rich `ComposeModal` for drafting emails, alongside native attachment handling and a dedicated downloads manager (`useDownloads()`, `download_attachment()`).
 
-### 🧠 Smart Features & OS Integration
+### Smart Features & OS Integration
 *   **Intelligent Content Extraction**: A robust extraction pipeline (`run_extraction_pipeline()`) that parses inline images (`rewrite_cid_images()`) and decodes calendar invites (ICS) for enhanced viewing.
 *   **Automated Contact Management**: Automatically extracts and stores contacts from your communications (`extract_and_store_contacts()`) into a local database, enabling fast address auto-completion (`search_contacts()`).
+*   **Custom Tag & Folder Management**: Seamlessly syncs provider tags (like Gmail labels) into a local SQLite schema, allowing advanced offline organization and message-to-tag mapping.
 *   **Deep OS Integration**: Leverages Tauri for native system tray support (`spawn_tray_update_loop()`), background OS notifications (`show_new_emails()`), and "minimize to tray" functionality (`was_launched_minimized()`).
 *   **Instant Actions**: Perform standard email operations—like starring (`toggle_star()`), marking as read (`toggle_read()`), and deleting (`delete_message()`)—with immediate optimistic UI updates backed by robust local-to-remote sync.
 
