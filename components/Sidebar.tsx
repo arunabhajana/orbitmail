@@ -73,7 +73,7 @@ function buildTagTree(tags: Tag[]): TagNode[] {
     return rootNodes;
 }
 
-const TagTreeList = ({ nodes, currentFolder, onFolderSelect, onEditTagClick, depth = 0 }: { nodes: TagNode[], currentFolder?: string, onFolderSelect?: (folder: string) => void, onEditTagClick?: (tag: Tag) => void, depth?: number }) => {
+const TagTreeList = ({ nodes, currentFolder, onFolderSelect, onEditTagClick, onDeleteTagClick, depth = 0 }: { nodes: TagNode[], currentFolder?: string, onFolderSelect?: (folder: string) => void, onEditTagClick?: (tag: Tag) => void, onDeleteTagClick?: (tag: Tag) => void, depth?: number }) => {
     return (
         <div className="space-y-0.5">
             {nodes.map((node, index) => (
@@ -83,6 +83,7 @@ const TagTreeList = ({ nodes, currentFolder, onFolderSelect, onEditTagClick, dep
                     currentFolder={currentFolder} 
                     onFolderSelect={onFolderSelect} 
                     onEditTagClick={onEditTagClick} 
+                    onDeleteTagClick={onDeleteTagClick}
                     depth={depth} 
                     isFirst={index === 0} 
                     isLast={index === nodes.length - 1} 
@@ -92,7 +93,7 @@ const TagTreeList = ({ nodes, currentFolder, onFolderSelect, onEditTagClick, dep
     );
 };
 
-const TagTreeNode = ({ node, currentFolder, onFolderSelect, onEditTagClick, depth = 0, isFirst = false, isLast = false }: { node: TagNode, currentFolder?: string, onFolderSelect?: (folder: string) => void, onEditTagClick?: (tag: Tag) => void, depth?: number, isFirst?: boolean, isLast?: boolean }) => {
+const TagTreeNode = ({ node, currentFolder, onFolderSelect, onEditTagClick, onDeleteTagClick, depth = 0, isFirst = false, isLast = false }: { node: TagNode, currentFolder?: string, onFolderSelect?: (folder: string) => void, onEditTagClick?: (tag: Tag) => void, onDeleteTagClick?: (tag: Tag) => void, depth?: number, isFirst?: boolean, isLast?: boolean }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const hasChildren = node.children.length > 0;
 
@@ -123,6 +124,7 @@ const TagTreeNode = ({ node, currentFolder, onFolderSelect, onEditTagClick, dept
                     highlight={currentFolder === `tag:${node.tag.id}`}
                     onClick={() => onFolderSelect?.(`tag:${node.tag!.id}`)}
                     onEdit={onEditTagClick}
+                    onDelete={onDeleteTagClick}
                     hasChildren={hasChildren}
                     isCollapsed={isCollapsed}
                     onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
@@ -143,7 +145,7 @@ const TagTreeNode = ({ node, currentFolder, onFolderSelect, onEditTagClick, dept
             
             {hasChildren && !isCollapsed && (
                 <div className="ml-5 mt-0.5">
-                    <TagTreeList nodes={node.children} currentFolder={currentFolder} onFolderSelect={onFolderSelect} onEditTagClick={onEditTagClick} depth={depth + 1} />
+                    <TagTreeList nodes={node.children} currentFolder={currentFolder} onFolderSelect={onFolderSelect} onEditTagClick={onEditTagClick} onDeleteTagClick={onDeleteTagClick} depth={depth + 1} />
                 </div>
             )}
         </div>
@@ -155,6 +157,7 @@ interface SidebarProps {
     onCompose: () => void;
     onCreateTagClick?: () => void;
     onEditTagClick?: (tag: Tag) => void;
+    onDeleteTagClick?: (tag: Tag) => void;
     currentFolder?: string;
     onFolderSelect?: (folder: string) => void;
     unreadCounts?: Record<string, number>;
@@ -170,7 +173,7 @@ const NAV_ITEMS: NavItemConfig[] = [
     { icon: Trash2, label: "Trash", id: "trash" },
 ];
 
-const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, onCreateTagClick, onEditTagClick, currentFolder, onFolderSelect, unreadCounts }) => {
+const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, onCreateTagClick, onEditTagClick, onDeleteTagClick, currentFolder, onFolderSelect, unreadCounts }) => {
     const [tags, setTags] = useState<Tag[]>([]);
 
     React.useEffect(() => {
@@ -235,6 +238,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, onCreateTagClic
                                 currentFolder={currentFolder}
                                 onFolderSelect={onFolderSelect}
                                 onEditTagClick={onEditTagClick}
+                                onDeleteTagClick={onDeleteTagClick}
                             />
                         </div>
                     </div>

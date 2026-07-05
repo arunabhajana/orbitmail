@@ -206,6 +206,7 @@ pub fn run() {
       get_message_tags,
       update_tag,
       create_tag,
+      delete_tag,
       crate::auth::hello::check_hello_availability,
       crate::auth::hello::authenticate_hello
     ])

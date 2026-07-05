@@ -20,6 +20,7 @@ import { usePendingSentMessages } from '@/hooks/usePendingSentMessages';
 import { SearchProgressData } from '@/components/inbox/EmailListHeader';
 import { CreateTagModal } from '@/components/tags/CreateTagModal';
 import { EditTagModal } from '@/components/tags/EditTagModal';
+import { DeleteTagModal } from '@/components/tags/DeleteTagModal';
 import { Tag } from '@/lib/types';
 interface FolderSearchState {
     searchQuery: string;
@@ -35,6 +36,7 @@ export default function MainLayout() {
     const [isComposeOpen, setIsComposeOpen] = useState(false);
     const [isCreateTagOpen, setIsCreateTagOpen] = useState(false);
     const [editingTag, setEditingTag] = useState<Tag | null>(null);
+    const [deletingTag, setDeletingTag] = useState<Tag | null>(null);
 
     // --- New State for Folders & Stars ---
     const [currentFolder, setCurrentFolder] = useState<string>("inbox");
@@ -990,10 +992,9 @@ export default function MainLayout() {
             <Sidebar
                 className="sidebar-anim w-64 flex flex-col shrink-0"
                 onCompose={() => setIsComposeOpen(true)}
-                onCreateTagClick={() => {
-                    setIsCreateTagOpen(true);
-                }}
+                onCreateTagClick={() => setIsCreateTagOpen(true)}
                 onEditTagClick={(tag) => setEditingTag(tag)}
+                onDeleteTagClick={(tag) => setDeletingTag(tag)}
                 currentFolder={currentFolder}
                 onFolderSelect={setCurrentFolder}
                 unreadCounts={unreadCounts}
@@ -1088,6 +1089,22 @@ export default function MainLayout() {
                     <EditTagModal 
                         tag={editingTag}
                         onClose={() => setEditingTag(null)} 
+                    />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {deletingTag && (
+                    <DeleteTagModal
+                        tag={deletingTag}
+                        onClose={() => setDeletingTag(null)}
+                        onSuccess={() => {
+                            setDeletingTag(null);
+                            if (currentFolder === `tag:${deletingTag.id}`) {
+                                setCurrentFolder('inbox');
+                                fetchCache('inbox');
+                            }
+                        }}
                     />
                 )}
             </AnimatePresence>

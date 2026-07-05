@@ -53,3 +53,14 @@ pub async fn create_tag(
         _ => Err("Provider does not support creating tags yet".to_string()),
     }
 }
+
+pub async fn delete_tag(
+    app_handle: &AppHandle,
+    account: &Account,
+    tag_id: &str,
+) -> Result<(), String> {
+    match account.provider {
+        MailProvider::Google => gmail::delete_tag(app_handle, account, tag_id).await,
+        _ => Err("Provider does not support deleting tags".to_string()),
+    }
+}

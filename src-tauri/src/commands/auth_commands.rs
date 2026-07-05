@@ -190,3 +190,12 @@ pub async fn create_tag(
     let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
     crate::mail::tags::create_tag(&app_handle, &account, &name, bg_color.as_deref(), text_color.as_deref()).await
 }
+
+#[tauri::command]
+pub async fn delete_tag(
+    app_handle: AppHandle,
+    tag_id: String,
+) -> Result<(), String> {
+    let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
+    crate::mail::tags::delete_tag(&app_handle, &account, &tag_id).await
+}

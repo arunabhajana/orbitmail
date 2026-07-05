@@ -263,6 +263,55 @@ pub async fn update_tag(
     Ok(())
 }
 
+pub async fn delete_tag(
+    app_handle: &AppHandle,
+    account: &Account,
+    tag_id: &str,
+) -> Result<(), String> {
+    log::info!("Deleting Gmail label for account {}, tag {}", account.id, tag_id);
+    let client = Client::new();
+    
+    let url = format!("https://gmail.googleapis.com/gmail/v1/users/me/labels/{}", tag_id);
+    let res = client
+        .delete(&url)
+        .bearer_auth(&account.access_token)
+        .send()
+        .await
+        .map_err(|e| format!("Gmail API Error: {}", e))?;
+
+    if !res.status().is_success() {
+        // A 404 might mean it's already deleted on the server, which is fine to ignore sometimes,
+        // but let's report errors cleanly
+        let err = res.text().await.unwrap_or_default();
+        return Err(format!("Gmail API returned error deleting label: {}", err));
+    }
+
+    // Update DB
+    let db_path = crate::mail::database::get_db_path(app_handle)?;
+    let mut conn = rusqlite::Connection::open(db_path).map_err(|e| e.to_string())?;
+
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    
+    // First, remove the tag from any messages
+    tx.execute(
+        "DELETE FROM message_tags WHERE account_id = ?1 AND tag_id = ?2",
+        rusqlite::params![account.id, tag_id],
+    ).map_err(|e| e.to_string())?;
+
+    // Next, delete the tag itself
+    tx.execute(
+        "DELETE FROM tags WHERE account_id = ?1 AND id = ?2",
+        rusqlite::params![account.id, tag_id],
+    ).map_err(|e| e.to_string())?;
+
+    tx.commit().map_err(|e| e.to_string())?;
+
+    use tauri::Emitter;
+    let _ = app_handle.emit("mail:tags_updated", ());
+
+    Ok(())
+}
+
 pub async fn create_tag(
     app_handle: &AppHandle,
     account: &Account,

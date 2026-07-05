@@ -36,7 +36,7 @@ export const NavItem = memo(({ icon: Icon, label, id, badge, highlight, onClick 
 NavItem.displayName = "NavItem";
 
 import { useState } from "react";
-import { MoreHorizontal, ChevronDown } from "lucide-react";
+import { MoreHorizontal, ChevronDown, Edit2, Trash2 } from "lucide-react";
 
 export const TagItem = memo(({ 
     tag, 
@@ -44,6 +44,7 @@ export const TagItem = memo(({
     highlight, 
     onClick, 
     onEdit,
+    onDelete,
     hasChildren,
     isCollapsed,
     onToggleCollapse
@@ -53,6 +54,7 @@ export const TagItem = memo(({
     highlight?: boolean, 
     onClick?: () => void, 
     onEdit?: (tag: Tag) => void,
+    onDelete?: (tag: Tag) => void,
     hasChildren?: boolean,
     isCollapsed?: boolean,
     onToggleCollapse?: () => void
@@ -90,15 +92,29 @@ export const TagItem = memo(({
                 <span className="truncate flex-1 text-left ml-2" title={tag.name}>{basename || tag.name}</span>
                 
                 {isHovered && (
-                    <div 
-                        className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 ml-1"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (onEdit) onEdit(tag);
-                        }}
-                        title="Edit tag"
-                    >
-                        <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                    <div className="flex items-center shrink-0 ml-1">
+                        <div 
+                            className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onEdit) onEdit(tag);
+                            }}
+                            title="Edit tag"
+                        >
+                            <Edit2 className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                        {onDelete && (
+                            <div 
+                                className="p-1 rounded-md hover:bg-red-500/10 transition-colors group/delete"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDelete(tag);
+                                }}
+                                title="Delete tag"
+                            >
+                                <Trash2 className="w-4 h-4 text-muted-foreground group-hover/delete:text-red-500" />
+                            </div>
+                        )}
                     </div>
                 )}
             </button>
