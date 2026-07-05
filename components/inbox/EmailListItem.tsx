@@ -29,6 +29,7 @@ export const EmailListItem = memo(({
     onToggleStar,
     onToggleRead,
     onDelete,
+    onContextMenu,
     allTags = {}
 }: {
     email: Email;
@@ -37,6 +38,7 @@ export const EmailListItem = memo(({
     onToggleStar?: (id: string) => void;
     onToggleRead?: (id: string) => void;
     onDelete?: (id: string) => void;
+    onContextMenu?: (e: React.MouseEvent, id: string) => void;
     allTags?: Record<string, import('@/lib/types').Tag>;
 }) => {
     const [previewText, setPreviewText] = useState(email.preview || "");
@@ -50,6 +52,7 @@ export const EmailListItem = memo(({
 
     return (
         <div
+            onContextMenu={(e) => onContextMenu?.(e, email.id)}
             className="relative border-b border-black/5 dark:border-white/5 overflow-hidden group"
         >
             <div

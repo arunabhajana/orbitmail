@@ -12,6 +12,7 @@ import OrbitLoader from './inbox/OrbitLoader';
 import { invoke } from '@tauri-apps/api/core';
 import { PendingSentMessage } from '@/hooks/usePendingSentMessages';
 import { PendingEmailListItem } from './inbox/PendingEmailListItem';
+import { EmailContextMenu, EmailContextMenuState } from './inbox/EmailContextMenu';
 import { Tag } from '@/lib/types';
 import { useState, useEffect } from 'react';
 
@@ -70,6 +71,7 @@ const EmailList: React.FC<EmailListProps> = ({
 }) => {
     const [currentFilter, setCurrentFilter] = React.useState<FilterType>('all');
     const [allTags, setAllTags] = React.useState<Record<string, import('@/lib/types').Tag>>({});
+    const [contextMenuState, setContextMenuState] = React.useState<EmailContextMenuState | null>(null);
 
     React.useEffect(() => {
         invoke<import('@/lib/types').Tag[]>('get_all_tags').then(tags => {
@@ -378,6 +380,22 @@ const EmailList: React.FC<EmailListProps> = ({
                                         onToggleStar={onToggleStar}
                                         onToggleRead={onToggleRead}
                                         onDelete={onDeleteMessage}
+                                        onContextMenu={(e, id) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            console.log("Right click fired for:", id);
+                                            // Import toast dynamically or if not available just don't crash
+                                            try {
+                                                const { toast } = require('sonner');
+                                                toast(`Right clicked on email ${id}`);
+                                            } catch (e) {}
+                                            setContextMenuState({
+                                                x: e.clientX,
+                                                y: e.clientY,
+                                                emailId: id,
+                                                unread: email.unread || false
+                                            });
+                                        }}
                                         allTags={allTags}
                                     />
                                 </div>
@@ -399,6 +417,11 @@ const EmailList: React.FC<EmailListProps> = ({
                 ) : <div className="h-16 w-full shrink-0" />}
             </div>
             )}
+            <EmailContextMenu 
+                contextMenu={contextMenuState} 
+                onClose={() => setContextMenuState(null)} 
+                onToggleRead={onToggleRead} 
+            />
         </main>
     );
 };
