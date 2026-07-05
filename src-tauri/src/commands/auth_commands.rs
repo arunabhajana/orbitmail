@@ -169,9 +169,15 @@ pub async fn clear_local_cache(app_handle: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn update_tag_color(app_handle: AppHandle, tag_id: String, bg_color: String, text_color: String) -> Result<(), String> {
+pub async fn update_tag(
+    app_handle: AppHandle, 
+    tag_id: String, 
+    name: String, 
+    bg_color: Option<String>, 
+    text_color: Option<String>
+) -> Result<(), String> {
     let account = crate::auth::bootstrap::ensure_active_account(&app_handle).await?;
-    crate::mail::tags::update_tag_color(&app_handle, &account, &tag_id, &bg_color, &text_color).await
+    crate::mail::tags::update_tag(&app_handle, &account, &tag_id, &name, bg_color.as_deref(), text_color.as_deref()).await
 }
 
 #[tauri::command]

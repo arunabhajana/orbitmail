@@ -20,14 +20,141 @@ import { UserProfile } from "./sidebar/UserProfile";
 import { NavItem, TagItem } from "./sidebar/SidebarNavItem";
 import { NavItemConfig, Tag } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
-import { Plus } from "lucide-react";
+import { Plus, ChevronDown } from "lucide-react";
 
 // --- Types ---
+
+export interface TagNode {
+    basename: string;
+    fullPath: string;
+    tag?: Tag;
+    children: TagNode[];
+}
+
+function buildTagTree(tags: Tag[]): TagNode[] {
+    const rootNodes: TagNode[] = [];
+    const nodeMap = new Map<string, TagNode>();
+
+    const sortedTags = [...tags].sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const tag of sortedTags) {
+        const parts = tag.name.split('/');
+        let currentPath = '';
+        let parentNode: TagNode | null = null;
+
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const isLast = i === parts.length - 1;
+            currentPath = currentPath ? `${currentPath}/${part}` : part;
+
+            if (!nodeMap.has(currentPath)) {
+                const newNode: TagNode = {
+                    basename: part,
+                    fullPath: currentPath,
+                    tag: isLast ? tag : undefined,
+                    children: [],
+                };
+                nodeMap.set(currentPath, newNode);
+
+                if (parentNode) {
+                    parentNode.children.push(newNode);
+                } else {
+                    rootNodes.push(newNode);
+                }
+            }
+            parentNode = nodeMap.get(currentPath)!;
+            
+            if (isLast && !parentNode.tag) {
+                parentNode.tag = tag;
+            }
+        }
+    }
+    
+    return rootNodes;
+}
+
+const TagTreeList = ({ nodes, currentFolder, onFolderSelect, onEditTagClick, depth = 0 }: { nodes: TagNode[], currentFolder?: string, onFolderSelect?: (folder: string) => void, onEditTagClick?: (tag: Tag) => void, depth?: number }) => {
+    return (
+        <div className="space-y-0.5">
+            {nodes.map((node, index) => (
+                <TagTreeNode 
+                    key={node.fullPath} 
+                    node={node} 
+                    currentFolder={currentFolder} 
+                    onFolderSelect={onFolderSelect} 
+                    onEditTagClick={onEditTagClick} 
+                    depth={depth} 
+                    isFirst={index === 0} 
+                    isLast={index === nodes.length - 1} 
+                />
+            ))}
+        </div>
+    );
+};
+
+const TagTreeNode = ({ node, currentFolder, onFolderSelect, onEditTagClick, depth = 0, isFirst = false, isLast = false }: { node: TagNode, currentFolder?: string, onFolderSelect?: (folder: string) => void, onEditTagClick?: (tag: Tag) => void, depth?: number, isFirst?: boolean, isLast?: boolean }) => {
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const hasChildren = node.children.length > 0;
+
+    return (
+        <div className="flex flex-col relative">
+            {depth > 0 && (
+                <>
+                    <div className="absolute border-l border-black/10 dark:border-white/10 pointer-events-none z-0" 
+                         style={{ 
+                             left: '11px', 
+                             top: isFirst ? '-18px' : '-2px',
+                             bottom: isLast ? 'calc(100% - 16px)' : '-2px' 
+                         }} 
+                    />
+                    <div className="absolute border-t border-black/10 dark:border-white/10 pointer-events-none z-0"
+                         style={{
+                             left: '11px',
+                             top: '16px',
+                             width: '15px'
+                         }}
+                    />
+                </>
+            )}
+            {node.tag ? (
+                <TagItem 
+                    tag={node.tag}
+                    basename={node.basename}
+                    highlight={currentFolder === `tag:${node.tag.id}`}
+                    onClick={() => onFolderSelect?.(`tag:${node.tag!.id}`)}
+                    onEdit={onEditTagClick}
+                    hasChildren={hasChildren}
+                    isCollapsed={isCollapsed}
+                    onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+                />
+            ) : (
+                // Virtual parent
+                <div className="w-full flex items-center pr-2 py-1.5 pl-1.5 rounded-lg text-sm font-medium text-muted-foreground dark:text-white/60">
+                    <div 
+                        className="flex items-center justify-center w-4 h-4 shrink-0 rounded hover:bg-black/10 dark:hover:bg-white/20 transition-colors mr-1 cursor-pointer" 
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                    >
+                        <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", isCollapsed && "-rotate-90")} />
+                    </div>
+                    <span className="w-2.5 h-2.5 rounded-full ring-1 ring-black/5 shrink-0 bg-transparent" />
+                    <span className="truncate flex-1 text-left ml-2" title={node.fullPath}>{node.basename}</span>
+                </div>
+            )}
+            
+            {hasChildren && !isCollapsed && (
+                <div className="ml-5 mt-0.5">
+                    <TagTreeList nodes={node.children} currentFolder={currentFolder} onFolderSelect={onFolderSelect} onEditTagClick={onEditTagClick} depth={depth + 1} />
+                </div>
+            )}
+        </div>
+    );
+};
 
 interface SidebarProps {
     className?: string;
     onCompose: () => void;
     onCreateTagClick?: () => void;
+    onEditTagClick?: (tag: Tag) => void;
     currentFolder?: string;
     onFolderSelect?: (folder: string) => void;
     unreadCounts?: Record<string, number>;
@@ -43,7 +170,7 @@ const NAV_ITEMS: NavItemConfig[] = [
     { icon: Trash2, label: "Trash", id: "trash" },
 ];
 
-const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, onCreateTagClick, currentFolder, onFolderSelect, unreadCounts }) => {
+const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, onCreateTagClick, onEditTagClick, currentFolder, onFolderSelect, unreadCounts }) => {
     const [tags, setTags] = useState<Tag[]>([]);
 
     React.useEffect(() => {
@@ -90,7 +217,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, onCreateTagClic
 
                     {/* 3. Tags Section */}
                     <div className="mt-6">
-                        <div className="flex items-center justify-between px-4 mb-2 group">
+                        <div className="flex items-center justify-between pl-4 pr-0 mb-2 group">
                             <h3 className="text-xs font-semibold text-muted-foreground/50 dark:text-white/40 uppercase tracking-wider">
                                 Tags
                             </h3>
@@ -99,22 +226,16 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onCompose, onCreateTagClic
                                 className="p-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white rounded hover:bg-black/5 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all"
                                 title="Create new tag"
                             >
-                                <Plus className="w-3.5 h-3.5" />
+                                <Plus className="w-4 h-4" />
                             </button>
                         </div>
                         <div className="space-y-1">
-                            {tags.filter(t => t.tag_type === 'user').map((item) => (
-                                <TagItem 
-                                    key={item.id} 
-                                    tag={item} 
-                                    highlight={currentFolder === `tag:${item.id}`} 
-                                    onClick={() => onFolderSelect?.(`tag:${item.id}`)} 
-                                    onColorChange={(tagId, bg, text) => {
-                                        setTags(prev => prev.map(t => t.id === tagId ? { ...t, bg_color: bg, text_color: text } : t));
-                                        invoke('update_tag_color', { tagId, bgColor: bg, textColor: text }).catch(console.error);
-                                    }}
-                                />
-                            ))}
+                            <TagTreeList 
+                                nodes={buildTagTree(tags.filter(t => t.tag_type === 'user'))}
+                                currentFolder={currentFolder}
+                                onFolderSelect={onFolderSelect}
+                                onEditTagClick={onEditTagClick}
+                            />
                         </div>
                     </div>
                 </nav>

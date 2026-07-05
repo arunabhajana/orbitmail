@@ -35,20 +35,29 @@ export const NavItem = memo(({ icon: Icon, label, id, badge, highlight, onClick 
 ));
 NavItem.displayName = "NavItem";
 
-import { useState, useRef, useEffect } from "react";
-import { MoreHorizontal } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { GMAIL_TAG_COLORS } from "@/lib/types";
+import { useState } from "react";
+import { MoreHorizontal, ChevronDown } from "lucide-react";
 
-export const TagItem = memo(({ tag, highlight, onClick, onColorChange }: { tag: Tag, highlight?: boolean, onClick?: () => void, onColorChange?: (tagId: string, bg: string, text: string) => void }) => {
+export const TagItem = memo(({ 
+    tag, 
+    basename, 
+    highlight, 
+    onClick, 
+    onEdit,
+    hasChildren,
+    isCollapsed,
+    onToggleCollapse
+}: { 
+    tag: Tag, 
+    basename?: string, 
+    highlight?: boolean, 
+    onClick?: () => void, 
+    onEdit?: (tag: Tag) => void,
+    hasChildren?: boolean,
+    isCollapsed?: boolean,
+    onToggleCollapse?: () => void
+}) => {
     const [isHovered, setIsHovered] = useState(false);
-    const [isPickerOpen, setIsPickerOpen] = useState(false);
-
-    const handleColorPick = (e: React.MouseEvent, bg: string, text: string) => {
-        e.stopPropagation();
-        setIsPickerOpen(false);
-        if (onColorChange) onColorChange(tag.id, bg, text);
-    };
 
     return (
         <div 
@@ -58,48 +67,41 @@ export const TagItem = memo(({ tag, highlight, onClick, onColorChange }: { tag: 
         >
             <button 
                 onClick={onClick} 
-                className={cn("w-full flex items-center gap-3 pl-4 pr-2 py-2 rounded-lg text-sm transition-all duration-200 outline-none", 
+                className={cn("w-full flex items-center pr-2 py-1.5 pl-1.5 rounded-lg text-sm transition-all duration-200 outline-none group", 
                     highlight ? "bg-white/60 dark:bg-white/10 text-foreground dark:text-white/90 font-medium shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
                               : "font-medium text-muted-foreground dark:text-white/60 hover:text-foreground dark:hover:text-white/90 hover:bg-white/40 dark:hover:bg-white/5")}
             >
-                <span className="w-2.5 h-2.5 rounded-full ring-1 ring-black/5 flex-shrink-0" style={{ backgroundColor: tag.bg_color || '#9ca3af' }} />
-                <span className="truncate flex-1 text-left">{tag.name}</span>
+                <div 
+                    className="flex items-center justify-center w-4 h-4 shrink-0 rounded hover:bg-black/10 dark:hover:bg-white/20 transition-colors mr-1"
+                    onClick={(e) => {
+                        if (hasChildren) {
+                            e.stopPropagation();
+                            onToggleCollapse?.();
+                        }
+                    }}
+                >
+                    {hasChildren && (
+                        <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform duration-200", isCollapsed && "-rotate-90")} />
+                    )}
+                </div>
+
+                <span className="w-2.5 h-2.5 rounded-full ring-1 ring-black/5 shrink-0" style={{ backgroundColor: tag.bg_color || '#9ca3af' }} />
                 
-                {(isHovered || isPickerOpen) && (
+                <span className="truncate flex-1 text-left ml-2" title={tag.name}>{basename || tag.name}</span>
+                
+                {isHovered && (
                     <div 
-                        className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                        className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 ml-1"
                         onClick={(e) => {
                             e.stopPropagation();
-                            setIsPickerOpen(!isPickerOpen);
+                            if (onEdit) onEdit(tag);
                         }}
+                        title="Edit tag"
                     >
                         <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
                     </div>
                 )}
             </button>
-
-            <AnimatePresence>
-                {isPickerOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                    >
-                        <div className="py-2 px-3 pb-3 grid grid-cols-6 gap-2">
-                            {GMAIL_TAG_COLORS.slice(0, 30).map((color, i) => (
-                                <button
-                                    key={i}
-                                    onClick={(e) => handleColorPick(e, color.bg, color.text)}
-                                    className="w-5 h-5 rounded-full ring-1 ring-black/10 dark:ring-white/10 hover:scale-125 transition-transform"
-                                    style={{ backgroundColor: color.bg }}
-                                    title="Set tag color"
-                                />
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </div>
     );
 });

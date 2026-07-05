@@ -27,16 +27,17 @@ pub fn sync_message_tags(
     }
 }
 
-pub async fn update_tag_color(
+pub async fn update_tag(
     app_handle: &AppHandle,
     account: &Account,
     tag_id: &str,
-    bg_color: &str,
-    text_color: &str,
+    name: &str,
+    bg_color: Option<&str>,
+    text_color: Option<&str>,
 ) -> Result<(), String> {
     match account.provider {
-        MailProvider::Google => gmail::update_tag_color(app_handle, account, tag_id, bg_color, text_color).await,
-        _ => Err("Provider does not support setting tag colors".to_string()),
+        MailProvider::Google => gmail::update_tag(app_handle, account, tag_id, name, bg_color, text_color).await,
+        _ => Err("Provider does not support updating tags".to_string()),
     }
 }
 

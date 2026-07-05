@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, Check, Loader2, Tag as TagIcon } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
@@ -39,18 +39,31 @@ const GMAIL_COLORS = [
 
 const RESERVED_NAMES = ["inbox", "spam", "trash", "sent", "drafts", "unread", "starred"];
 
-interface CreateTagModalProps {
+interface EditTagModalProps {
+    tag: Tag;
     onClose: () => void;
 }
 
-export const CreateTagModal: React.FC<CreateTagModalProps> = ({ onClose }) => {
+export const EditTagModal: React.FC<EditTagModalProps> = ({ tag, onClose }) => {
     const [name, setName] = useState('');
     const [parentTag, setParentTag] = useState<string>('');
     const [selectedColor, setSelectedColor] = useState<{ bg: string, text: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [existingTags, setExistingTags] = useState<Tag[]>([]);
 
-    React.useEffect(() => {
+    useEffect(() => {
+        const parts = tag.name.split('/');
+        const baseName = parts.pop() || '';
+        const parent = parts.join('/');
+        
+        setName(baseName);
+        setParentTag(parent);
+        if (tag.bg_color && tag.text_color) {
+            setSelectedColor({ bg: tag.bg_color, text: tag.text_color });
+        }
+    }, [tag]);
+
+    useEffect(() => {
         invoke<Tag[]>('get_all_tags')
             .then(setExistingTags)
             .catch(console.error);
@@ -58,6 +71,8 @@ export const CreateTagModal: React.FC<CreateTagModalProps> = ({ onClose }) => {
 
     const trimmedName = name.trim();
     const fullName = parentTag ? `${parentTag}/${trimmedName}` : trimmedName;
+    const isNameChanged = fullName !== tag.name;
+    const isColorChanged = selectedColor?.bg !== tag.bg_color;
 
     let validationError = "";
     if (!trimmedName) {
@@ -68,7 +83,7 @@ export const CreateTagModal: React.FC<CreateTagModalProps> = ({ onClose }) => {
         validationError = "Tag name cannot exceed 225 characters";
     } else if (RESERVED_NAMES.includes(trimmedName.toLowerCase()) || RESERVED_NAMES.includes(fullName.toLowerCase())) {
         validationError = "Cannot use reserved system label names";
-    } else if (existingTags.some(t => t.name.toLowerCase() === fullName.toLowerCase())) {
+    } else if (existingTags.some(t => t.id !== tag.id && t.name.toLowerCase() === fullName.toLowerCase())) {
         validationError = "A tag with this name already exists";
     }
 
@@ -79,18 +94,24 @@ export const CreateTagModal: React.FC<CreateTagModalProps> = ({ onClose }) => {
             return;
         }
 
+        if (!isNameChanged && !isColorChanged) {
+            onClose();
+            return;
+        }
+
         setIsSubmitting(true);
         try {
-            await invoke('create_tag', {
+            await invoke('update_tag', {
+                tagId: tag.id,
                 name: fullName,
                 bgColor: selectedColor?.bg || null,
                 textColor: selectedColor?.text || null
             });
-            toast.success('Tag created successfully');
+            toast.success('Tag updated successfully');
             onClose();
         } catch (error) {
-            console.error('Failed to create tag:', error);
-            toast.error('Failed to create tag', { description: String(error) });
+            console.error('Failed to update tag:', error);
+            toast.error('Failed to update tag', { description: String(error) });
         } finally {
             setIsSubmitting(false);
         }
@@ -120,14 +141,15 @@ export const CreateTagModal: React.FC<CreateTagModalProps> = ({ onClose }) => {
                         </div>
                         <div>
                             <p className="text-[14px] font-semibold text-foreground dark:text-white leading-none">
-                                Create New Tag
+                                Edit Tag
                             </p>
                             <p className="text-[11px] text-muted-foreground dark:text-white/50 mt-1">
-                                Organize your emails with custom labels
+                                Update the tag name, hierarchy, or color
                             </p>
                         </div>
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
                         className="p-1.5 text-muted-foreground dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-colors"
                     >
@@ -161,9 +183,9 @@ export const CreateTagModal: React.FC<CreateTagModalProps> = ({ onClose }) => {
                             className="w-full text-sm bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 outline-none text-foreground dark:text-white transition-all duration-150 focus:ring-2 focus:ring-primary/35 appearance-none cursor-pointer"
                         >
                             <option value="" className="bg-white dark:bg-[#18181b]">None (Top level)</option>
-                            {existingTags.filter(t => t.tag_type === 'user').map(tag => (
-                                <option key={tag.id} value={tag.name} className="bg-white dark:bg-[#18181b]">
-                                    {tag.name}
+                            {existingTags.filter(t => t.tag_type === 'user' && !t.name.startsWith(tag.name)).map(t => (
+                                <option key={t.id} value={t.name} className="bg-white dark:bg-[#18181b]">
+                                    {t.name}
                                 </option>
                             ))}
                         </select>
@@ -209,14 +231,14 @@ export const CreateTagModal: React.FC<CreateTagModalProps> = ({ onClose }) => {
                         >
                             Cancel
                         </button>
-                        <div title={validationError || ""}>
+                        <div title={validationError || (!isNameChanged && !isColorChanged ? "No changes made" : "")}>
                             <button
                                 type="submit"
-                                disabled={isSubmitting || !!validationError}
+                                disabled={isSubmitting || !!validationError || (!isNameChanged && !isColorChanged)}
                                 className="flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 transition-colors shadow-sm shadow-primary/20"
                             >
                                 {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                                Create Tag
+                                Save Changes
                             </button>
                         </div>
                     </div>

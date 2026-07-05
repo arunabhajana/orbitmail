@@ -202,16 +202,27 @@ pub fn sync_message_tags(
     Ok(())
 }
 
-pub async fn update_tag_color(app_handle: &AppHandle, account: &Account, tag_id: &str, bg_color: &str, text_color: &str) -> Result<(), String> {
-    log::info!("Updating Gmail label color for account {}, tag {}", account.id, tag_id);
+pub async fn update_tag(
+    app_handle: &AppHandle,
+    account: &Account,
+    tag_id: &str,
+    name: &str,
+    bg_color: Option<&str>,
+    text_color: Option<&str>,
+) -> Result<(), String> {
+    log::info!("Updating Gmail label for account {}, tag {}", account.id, tag_id);
     let client = Client::new();
     
-    let payload = serde_json::json!({
-        "color": {
-            "backgroundColor": bg_color,
-            "textColor": text_color
-        }
+    let mut payload = serde_json::json!({
+        "name": name,
     });
+
+    if let (Some(bg), Some(txt)) = (bg_color, text_color) {
+        payload["color"] = serde_json::json!({
+            "backgroundColor": bg,
+            "textColor": txt
+        });
+    }
 
     let url = format!("https://gmail.googleapis.com/gmail/v1/users/me/labels/{}", tag_id);
     let res = client
@@ -224,16 +235,30 @@ pub async fn update_tag_color(app_handle: &AppHandle, account: &Account, tag_id:
 
     if !res.status().is_success() {
         let err = res.text().await.unwrap_or_default();
-        return Err(format!("Gmail API returned error updating color: {}", err));
+        return Err(format!("Gmail API returned error updating label: {}", err));
     }
+
+    let label: GmailLabel = res.json().await.map_err(|e| e.to_string())?;
+
+    // Update DB
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
 
     let db_path = crate::mail::database::get_db_path(app_handle)?;
     let conn = rusqlite::Connection::open(db_path).map_err(|e| e.to_string())?;
 
+    let bg = label.color.as_ref().map(|c| c.bg_color.clone());
+    let txt = label.color.as_ref().map(|c| c.text_color.clone());
+
     conn.execute(
-        "UPDATE tags SET bg_color = ?1, text_color = ?2 WHERE account_id = ?3 AND id = ?4",
-        rusqlite::params![bg_color, text_color, account.id, tag_id],
+        "UPDATE tags SET name = ?1, bg_color = ?2, text_color = ?3, updated_at = ?4 WHERE account_id = ?5 AND id = ?6",
+        rusqlite::params![label.name, bg, txt, now, account.id, tag_id],
     ).map_err(|e| e.to_string())?;
+
+    use tauri::Emitter;
+    let _ = app_handle.emit("mail:tags_updated", ());
 
     Ok(())
 }

@@ -19,6 +19,8 @@ import EmailDetail from '@/components/EmailDetail';
 import { usePendingSentMessages } from '@/hooks/usePendingSentMessages';
 import { SearchProgressData } from '@/components/inbox/EmailListHeader';
 import { CreateTagModal } from '@/components/tags/CreateTagModal';
+import { EditTagModal } from '@/components/tags/EditTagModal';
+import { Tag } from '@/lib/types';
 interface FolderSearchState {
     searchQuery: string;
     activeSearchId: string | null;
@@ -32,6 +34,7 @@ export default function MainLayout() {
     const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
     const [isComposeOpen, setIsComposeOpen] = useState(false);
     const [isCreateTagOpen, setIsCreateTagOpen] = useState(false);
+    const [editingTag, setEditingTag] = useState<Tag | null>(null);
 
     // --- New State for Folders & Stars ---
     const [currentFolder, setCurrentFolder] = useState<string>("inbox");
@@ -990,6 +993,7 @@ export default function MainLayout() {
                 onCreateTagClick={() => {
                     setIsCreateTagOpen(true);
                 }}
+                onEditTagClick={(tag) => setEditingTag(tag)}
                 currentFolder={currentFolder}
                 onFolderSelect={setCurrentFolder}
                 unreadCounts={unreadCounts}
@@ -1074,6 +1078,16 @@ export default function MainLayout() {
                 {isCreateTagOpen && (
                     <CreateTagModal 
                         onClose={() => setIsCreateTagOpen(false)} 
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Edit Tag Modal */}
+            <AnimatePresence>
+                {editingTag && (
+                    <EditTagModal 
+                        tag={editingTag}
+                        onClose={() => setEditingTag(null)} 
                     />
                 )}
             </AnimatePresence>

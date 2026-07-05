@@ -12,6 +12,8 @@ import OrbitLoader from './inbox/OrbitLoader';
 import { invoke } from '@tauri-apps/api/core';
 import { PendingSentMessage } from '@/hooks/usePendingSentMessages';
 import { PendingEmailListItem } from './inbox/PendingEmailListItem';
+import { Tag } from '@/lib/types';
+import { useState, useEffect } from 'react';
 
 // Global cache states removed as predictive prefetch happens in Rust backend now
 
@@ -97,6 +99,29 @@ const EmailList: React.FC<EmailListProps> = ({
         listRef,
         getItemKey: (index) => displayedEmails[index]?.id || index,
     });
+
+    const [folderDisplayName, setFolderDisplayName] = useState<string>(currentFolder || '');
+
+    useEffect(() => {
+        if (!currentFolder) {
+            setFolderDisplayName('');
+            return;
+        }
+        if (currentFolder.startsWith('tag:')) {
+            const tagId = currentFolder.substring(4);
+            invoke<Tag[]>('get_all_tags')
+                .then(tags => {
+                    const tag = tags.find(t => t.id === tagId);
+                    setFolderDisplayName(tag ? tag.name : currentFolder);
+                })
+                .catch(err => {
+                    console.error("Failed to fetch tags", err);
+                    setFolderDisplayName(currentFolder);
+                });
+        } else {
+            setFolderDisplayName(currentFolder.charAt(0).toUpperCase() + currentFolder.slice(1));
+        }
+    }, [currentFolder]);
 
     React.useEffect(() => {
         if (!virtualItems || virtualItems.length === 0) return;
@@ -247,7 +272,7 @@ const EmailList: React.FC<EmailListProps> = ({
                     </div>
                     <h3 className="text-xl font-semibold text-foreground mb-2">No matching messages</h3>
                     <p className="text-sm text-muted-foreground max-w-[250px] mb-6">
-                        We couldn't find anything matching &ldquo;{searchQuery}&rdquo; in {currentFolder}.
+                        We couldn't find anything matching &ldquo;{searchQuery}&rdquo; in {folderDisplayName}.
                     </p>
                     <button
                         onClick={onSearchClear}
@@ -289,7 +314,7 @@ const EmailList: React.FC<EmailListProps> = ({
                     </div>
                     <h3 className="text-xl font-semibold text-foreground mb-2">No messages here</h3>
                     <p className="text-sm text-muted-foreground max-w-[250px]">
-                        Your {currentFolder} is completely empty.
+                        Your {folderDisplayName} folder is completely empty.
                     </p>
                 </motion.div>
             ) : displayedEmails.length === 0 && !isSyncing ? (

@@ -13,7 +13,7 @@ use tokio::sync::{Mutex, oneshot};
 use std::time::{Instant, Duration};
 use tokio_util::sync::CancellationToken;
 use serde::{Serialize, Deserialize};
-use std::str::FromStr;
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SearchState {
