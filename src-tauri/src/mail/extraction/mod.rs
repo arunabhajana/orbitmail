@@ -10,7 +10,7 @@ pub mod account;
 pub mod provider_registry;
 pub mod commerce;
 
-pub const CURRENT_EXTRACTOR_VERSION: u32 = 9;
+pub const CURRENT_EXTRACTOR_VERSION: u32 = 10;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ExtractionSource {

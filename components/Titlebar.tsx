@@ -189,6 +189,21 @@ function SyncIndicator() {
                                 Syncing...
                             </span>
                         </motion.div>
+                    ) : unreadCount > 0 ? (
+                        <motion.div
+                            key="unread"
+                            initial={{ opacity: 0, scale: 0.8, width: 0 }}
+                            animate={{ opacity: 1, scale: 1, width: "auto" }}
+                            exit={{ opacity: 0, scale: 0.8, width: 0 }}
+                            className="flex items-center gap-1.5 overflow-hidden whitespace-nowrap"
+                        >
+                            <div className="flex items-center justify-center bg-blue-500 text-white text-[9px] font-bold h-4 min-w-[16px] px-1 rounded-full shadow-sm ring-1 ring-white/20">
+                                {unreadCount}
+                            </div>
+                            <span className="text-[10px] font-medium text-foreground/70 tracking-tight">
+                                Unread
+                            </span>
+                        </motion.div>
                     ) : (
                         <motion.div
                             key="online"
@@ -205,25 +220,6 @@ function SyncIndicator() {
                     )}
                 </AnimatePresence>
             </div>
-
-            <AnimatePresence>
-                {unreadCount > 0 && (
-                    <motion.div
-                        key="unread"
-                        initial={{ opacity: 0, scale: 0.8, width: 0, marginLeft: -8 }}
-                        animate={{ opacity: 1, scale: 1, width: "auto", marginLeft: 0 }}
-                        exit={{ opacity: 0, scale: 0.8, width: 0, marginLeft: -8 }}
-                        className="flex items-center gap-1.5 overflow-hidden whitespace-nowrap"
-                    >
-                        <div className="flex items-center justify-center bg-blue-500 text-white text-[9px] font-bold h-4 min-w-[16px] px-1 rounded-full shadow-sm ring-1 ring-white/20">
-                            {unreadCount}
-                        </div>
-                        <span className="text-[10px] font-medium text-foreground/70 tracking-tight">
-                            Unread
-                        </span>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </div>
     );
 }

@@ -253,7 +253,8 @@ impl BodyPrefetchManager {
                 };
 
                 // Reply to oneshot waiters inline
-                if fetch_res.is_ok() {
+                // Try to read from cache regardless of fetch_res (it may already have been cached)
+                if fetch_res.is_ok() || !should_fetch {
                     if let Ok(Some((cached_body, attachments_json, extracted_data_json))) = database::get_message_body_cache(&app_handle, &job.key.folder, job.key.uid) {
                         let attachments = if let Some(json) = attachments_json {
                             serde_json::from_str(&json).unwrap_or_default()

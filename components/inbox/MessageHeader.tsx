@@ -114,6 +114,12 @@ export const MessageHeader = memo(({ email }: { email: Email }) => {
     const [showToast, setShowToast] = useState(false);
     const [isToExpanded, setIsToExpanded] = useState(false);
     const [allTags, setAllTags] = useState<Record<string, Tag>>({});
+    const [, setNow] = useState(Date.now());
+
+    React.useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), 60000);
+        return () => clearInterval(timer);
+    }, []);
 
     React.useEffect(() => {
         invoke<Tag[]>('get_all_tags').then(tags => {
