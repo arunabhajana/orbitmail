@@ -277,10 +277,7 @@ fn parse_header_to_message(msg: &imap::types::Fetch, server_validity: u32, folde
         .map(|dt| dt.timestamp())
         .unwrap_or_else(|_| chrono::Utc::now().timestamp());
 
-    let mut plain_body = String::new();
-    if let Ok(parsed_full) = parse_mail(body) {
-        plain_body = parsed_full.get_body().unwrap_or_default();
-    }
+    let plain_body = parsed.get_body().unwrap_or_default();
 
     let snippet = if !plain_body.is_empty() {
         let clean: String = plain_body

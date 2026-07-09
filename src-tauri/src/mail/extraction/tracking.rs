@@ -16,11 +16,22 @@ pub fn extract(_html: &str, text: &str) -> Vec<ExtractedEntity> {
             for cap in re.captures_iter(text) {
                 if let Some(m) = cap.get(1) {
                     // Only match if tracking words are nearby
-                    let context_start = cap.get(0).unwrap().start().saturating_sub(50);
-                    let context_end = std::cmp::min(cap.get(0).unwrap().end() + 50, text.len());
+                    let raw_start = cap.get(0).unwrap().start().saturating_sub(50);
+                    let raw_end = std::cmp::min(cap.get(0).unwrap().end() + 50, text.len());
+
+                    // Adjust to valid UTF-8 char boundaries to prevent panics
+                    let mut context_start = raw_start;
+                    while context_start > 0 && !text.is_char_boundary(context_start) {
+                        context_start -= 1;
+                    }
+                    let mut context_end = raw_end;
+                    while context_end < text.len() && !text.is_char_boundary(context_end) {
+                        context_end += 1;
+                    }
                     let context = &text[context_start..context_end];
                     
-                    if context.to_lowercase().contains("track") || context.to_lowercase().contains("ship") || context.to_lowercase().contains("deliver") {
+                    let context_lower = context.to_lowercase();
+                    if context_lower.contains("track") || context_lower.contains("ship") || context_lower.contains("deliver") {
                         entities.push(ExtractedEntity {
                             id: format!("tracking:{}:{}", provider.to_lowercase(), id_counter),
                             entity_type: EntityType::TrackingNumber,
